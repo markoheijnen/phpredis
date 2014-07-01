@@ -18,6 +18,7 @@
 #include "library.h"
 #include "redis_commands.h"
 #include <ext/standard/php_math.h>
+#include <ext/standard/php_rand.h>
 
 #define UNSERIALIZE_NONE 0
 #define UNSERIALIZE_KEYS 1
@@ -157,12 +158,9 @@ PHPAPI int redis_check_eof(RedisSock *redis_sock, int no_throw TSRMLS_DC)
     }
     // Wait for a while before trying to reconnect
     if (redis_sock->retry_interval) {
-        // Random factor to avoid having several (or many) concurrent 
-        // connections trying to reconnect at the same time
-        long retry_interval = (count ? redis_sock->retry_interval 
-            : (random() % redis_sock->retry_interval));
-        
-        usleep(retry_interval);
+    	// Random factor to avoid having several (or many) concurrent connections trying to reconnect at the same time
+   		long retry_interval = (count ? redis_sock->retry_interval : (php_rand(TSRMLS_C) % redis_sock->retry_interval));
+    	usleep(retry_interval);
     }
         redis_sock_connect(redis_sock TSRMLS_CC); /* reconnect */
         if(redis_sock->stream) { /*  check for EOF again. */
