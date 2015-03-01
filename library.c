@@ -1638,7 +1638,7 @@ PHPAPI int redis_sock_read_multibulk_reply(INTERNAL_FUNCTION_PARAMETERS,
                                            void *ctx)
 {
     char inbuf[1024];
-    int numElems;
+    int numElems, err_len;
     zval *z_multi_result;
 
     if(-1 == redis_check_eof(redis_sock, 0 TSRMLS_CC)) {
@@ -1659,6 +1659,10 @@ PHPAPI int redis_sock_read_multibulk_reply(INTERNAL_FUNCTION_PARAMETERS,
         IF_MULTI_OR_PIPELINE() {
             add_next_index_bool(z_tab, 0);
         } else {
+            if (inbuf[0] == '-') {
+                err_len = strlen(inbuf+1) - 2;
+                redis_sock_set_err(redis_sock, inbuf+1, err_len);
+            }
             RETVAL_FALSE;
         }
         return -1;
