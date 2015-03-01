@@ -47,7 +47,9 @@ class TestSuite {
 		throw new Exception($msg);
 	}
 
-	public static function run($className) {
+	public static function run($className, $str_limit = NULL) {
+        /* Lowercase our limit arg if we're passed one */
+        $str_limit = $str_limit ? strtolower($str_limit) : $str_limit;
 
 		$rc = new ReflectionClass($className);
 		$methods = $rc->GetMethods(ReflectionMethod::IS_PUBLIC);
@@ -56,6 +58,12 @@ class TestSuite {
 			$name = $m->name;
 			if(substr($name, 0, 4) !== 'test')
 				continue;
+
+            /* If we're trying to limit to a specific test and can't match the
+             * substring, skip */
+            if ($str_limit && strstr(strtolower($name), $str_limit)===FALSE) {
+                continue;
+            }
 
 			$count = count($className::$errors);
 			$rt = new $className;
