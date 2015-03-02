@@ -470,9 +470,6 @@ ra_find_node(RedisArray *ra, const char *key, int key_len, int *out_pos TSRMLS_D
     }
     if(out_pos) *out_pos = pos;
 
-    /* Cleanup */
-    efree(out);
-
     return ra->redis[pos];
 }
 
