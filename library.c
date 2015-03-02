@@ -32,6 +32,89 @@ extern zend_class_entry *redis_ce;
 extern zend_class_entry *redis_exception_ce;
 extern zend_class_entry *spl_ce_RuntimeException;
 
+/* Helper to reselect the proper DB number when we reconnect */
+static int reselect_db(RedisSock *redis_sock TSRMLS_DC) {
+    char *cmd, *response;
+    int cmd_len, response_len;
+
+    cmd_len = redis_cmd_format_static(&cmd, "SELECT", "d", redis_sock->dbNumber);
+
+    if (redis_sock_write(redis_sock, cmd, cmd_len TSRMLS_CC) < 0) {
+        efree(cmd);
+        return -1;
+    }
+
+    efree(cmd);
+
+    if ((response = redis_sock_read(redis_sock, &response_len TSRMLS_CC)) == NULL) {
+        return -1;
+    }
+
+    if (strncmp(response, "+OK", 3)) {
+        efree(response);
+        return -1;
+    }
+
+    efree(response);
+    return 0;
+}
+
+/* Helper to resend AUTH <password> in the case of a reconnect */
+static int resend_auth(RedisSock *redis_sock TSRMLS_DC) {
+    char *cmd, *response;
+    int cmd_len, response_len;
+
+    cmd_len = redis_cmd_format_static(&cmd, "AUTH", "s", redis_sock->auth,
+        strlen(redis_sock->auth));
+
+    if (redis_sock_write(redis_sock, cmd, cmd_len TSRMLS_CC) < 0) {
+        efree(cmd);
+        return -1;
+    }
+
+    efree(cmd);
+
+    response = redis_sock_read(redis_sock, &response_len TSRMLS_CC);
+    if (response == NULL) {
+        return -1;
+    }
+
+    if (strncmp(response, "+OK", 3)) {
+        efree(response);
+        return -1;
+    }
+
+    efree(response);
+    return 0;
+}
+
+/* Helper function that will throw an exception for a small number of ERR codes
+ * returned by Redis.  Typically we just return FALSE to the caller in the event
+ * of an ERROR reply, but for the following error types:
+ *    1) MASTERDOWN
+ *    2) AUTH
+ *    3) LOADING
+ */
+static void redis_error_throw(char *err, size_t err_len TSRMLS_DC) {
+    /* Handle stale data error (slave syncing with master) */
+    if (err_len == sizeof(REDIS_ERR_SYNC_MSG) - 1 &&
+        !memcmp(err,REDIS_ERR_SYNC_KW,sizeof(REDIS_ERR_SYNC_KW)-1))
+    {
+        zend_throw_exception(redis_exception_ce,
+            "SYNC with master in progress or master down!", 0 TSRMLS_CC);
+    } else if (err_len == sizeof(REDIS_ERR_LOADING_MSG) - 1 &&
+               !memcmp(err,REDIS_ERR_LOADING_KW,sizeof(REDIS_ERR_LOADING_KW)-1))
+    {
+        zend_throw_exception(redis_exception_ce,
+            "Redis is LOADING the dataset", 0 TSRMLS_CC);
+    } else if (err_len == sizeof(REDIS_ERR_AUTH_MSG) -1 &&
+               !memcmp(err,REDIS_ERR_AUTH_KW,sizeof(REDIS_ERR_AUTH_KW)-1))
+    {
+        zend_throw_exception(redis_exception_ce,
+            "Failed to AUTH connection", 0 TSRMLS_CC);
+    }
+}
+
 PHPAPI void redis_stream_close(RedisSock *redis_sock TSRMLS_DC) {
     if (!redis_sock->persistent) {
         php_stream_close(redis_sock->stream);
@@ -87,33 +170,20 @@ PHPAPI int redis_check_eof(RedisSock *redis_sock, int no_throw TSRMLS_DC)
         }
     }
 
-    // Reselect the DB.
-    if (count && redis_sock->dbNumber) {
-        char *cmd, *response;
-        int cmd_len, response_len;
-
-        cmd_len = redis_cmd_format_static(&cmd, "SELECT", "d",
-                                          redis_sock->dbNumber);
-
-        if (redis_sock_write(redis_sock, cmd, cmd_len TSRMLS_CC) < 0) {
-            efree(cmd);
-            return -1;
-        }
-        efree(cmd);
-
-        if ((response = redis_sock_read(redis_sock, &response_len TSRMLS_CC)) 
-                                        == NULL) 
-        {
+    /* We've connected if we have a count */
+    if (count) {
+        /* If we're using a password, attempt a reauthorization */
+        if (redis_sock->auth && resend_auth(redis_sock TSRMLS_CC) != 0) {
             return -1;
         }
 
-        if (strncmp(response, "+OK", 3)) {
-            efree(response);
+        /* If we're using a non-zero db, reselect it */
+        if (redis_sock->dbNumber && reselect_db(redis_sock TSRMLS_CC) != 0) {
             return -1;
         }
-        efree(response);
     }
 
+    /* Success */
     return 0;
 }
 
@@ -437,6 +507,9 @@ PHPAPI char *redis_sock_read(RedisSock *redis_sock, int *buf_len TSRMLS_DC)
         case '-':
             err_len = strlen(inbuf+1) - 2;
             redis_sock_set_err(redis_sock, inbuf+1, err_len);
+
+            /* Filter our ERROR through the few that should actually throw */
+            redis_error_throw(inbuf + 1, err_len TSRMLS_CC);
 
             /* Handle stale data error */
             if(memcmp(inbuf + 1, "-ERR SYNC ", 10) == 0) {
@@ -2117,10 +2190,8 @@ redis_read_variant_line(RedisSock *redis_sock, REDIS_REPLY_TYPE reply_type,
     // If this is an error response, check if it is a SYNC error, and throw in 
     // that case
     if(reply_type == TYPE_ERR) {
-        if(memcmp(inbuf, "ERR SYNC", 9) == 0) {
-            zend_throw_exception(redis_exception_ce, 
-                "SYNC with master in progress", 0 TSRMLS_CC);
-        }
+        /* Handle throwable errors */
+        redis_error_throw(inbuf, line_size TSRMLS_CC);
 
         // Set our last error
         redis_sock_set_err(redis_sock, inbuf, line_size);
