@@ -459,12 +459,14 @@ ra_find_node(RedisArray *ra, const char *key, int key_len, int *out_pos TSRMLS_D
         }
         efree(out);
     } else {
+        uint64_t h64;
+
         /* hash */
         hash = rcrc32(out, out_len);
         efree(out);
         
         /* get position on ring */
-        uint64_t h64 = hash;
+        h64 = hash;
         h64 *= ra->count;
         h64 /= 0xffffffff;
         pos = (int)h64;
@@ -560,12 +562,12 @@ ra_index_keys(zval *z_pairs, zval *z_redis TSRMLS_DC) {
 	/* Initialize key array */
 	zval *z_keys, **z_entry_pp;
 	MAKE_STD_ZVAL(z_keys);
+    HashPosition pos;
 #if PHP_VERSION_ID > 50300
 	array_init_size(z_keys, zend_hash_num_elements(Z_ARRVAL_P(z_pairs)));
 #else
 	array_init(z_keys);
 #endif
-	HashPosition pos;
 
 	/* Go through input array and add values to the key array */
 	zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(z_pairs), &pos);
