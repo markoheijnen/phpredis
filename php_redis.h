@@ -220,12 +220,6 @@ PHP_METHOD(Redis, getAuth);
 PHP_METHOD(Redis, getMode);
 PHP_METHOD(Redis, rawcommand);
 
-#ifdef PHP_WIN32
-#define PHP_REDIS_API __declspec(dllexport)
-#else
-#define PHP_REDIS_API
-#endif
-
 #ifdef ZTS
 #include "TSRM.h"
 #endif
@@ -240,31 +234,31 @@ PHP_MINFO_FUNCTION(redis);
 typedef void (*ResultCallback)(INTERNAL_FUNCTION_PARAMETERS, 
     RedisSock *redis_sock, zval *z_tab, void *ctx);
 
-PHPAPI int redis_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent);
+PHP_REDIS_API int redis_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent);
 
-PHPAPI void generic_sort_cmd(INTERNAL_FUNCTION_PARAMETERS, char *sort, 
+PHP_REDIS_API void generic_sort_cmd(INTERNAL_FUNCTION_PARAMETERS, char *sort, 
     int use_alpha);
 
-PHPAPI void generic_subscribe_cmd(INTERNAL_FUNCTION_PARAMETERS, char *sub_cmd);
+PHP_REDIS_API void generic_subscribe_cmd(INTERNAL_FUNCTION_PARAMETERS, char *sub_cmd);
 
-PHPAPI void generic_unsubscribe_cmd(INTERNAL_FUNCTION_PARAMETERS, 
+PHP_REDIS_API void generic_unsubscribe_cmd(INTERNAL_FUNCTION_PARAMETERS, 
     char *unsub_cmd);
 
-PHPAPI int redis_response_enqueued(RedisSock *redis_sock TSRMLS_DC);
+PHP_REDIS_API int redis_response_enqueued(RedisSock *redis_sock TSRMLS_DC);
 
-PHPAPI int get_flag(zval *object TSRMLS_DC);
+PHP_REDIS_API int get_flag(zval *object TSRMLS_DC);
 
-PHPAPI void set_flag(zval *object, int new_flag TSRMLS_DC);
+PHP_REDIS_API void set_flag(zval *object, int new_flag TSRMLS_DC);
 
-PHPAPI int redis_sock_read_multibulk_multi_reply_loop(
+PHP_REDIS_API int redis_sock_read_multibulk_multi_reply_loop(
     INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock, zval *z_tab, 
     int numElems);
 
 /* pipeline */
-PHPAPI request_item* get_pipeline_head(zval *object);
-PHPAPI void set_pipeline_head(zval *object, request_item *head);
-PHPAPI request_item* get_pipeline_current(zval *object);
-PHPAPI void set_pipeline_current(zval *object, request_item *current);
+PHP_REDIS_API request_item* get_pipeline_head(zval *object);
+PHP_REDIS_API void set_pipeline_head(zval *object, request_item *head);
+PHP_REDIS_API request_item* get_pipeline_current(zval *object);
+PHP_REDIS_API void set_pipeline_current(zval *object, request_item *current);
 
 #ifndef _MSC_VER
 ZEND_BEGIN_MODULE_GLOBALS(redis)
