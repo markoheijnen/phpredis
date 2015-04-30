@@ -168,7 +168,7 @@ cluster_multibulk_resp_recursive(RedisSock *sock, size_t elements,
 static RedisSock *cluster_slot_sock(redisCluster *c, unsigned short slot,
                                     ulong slaveidx)
 {
-    redisClusterNode **node;
+    redisClusterNode *node;
 
     /* Return the master if we're not looking for a slave */
     if (slaveidx == 0) {
@@ -176,12 +176,12 @@ static RedisSock *cluster_slot_sock(redisCluster *c, unsigned short slot,
     }
 
     /* Abort if we can't find this slave */
-    if (!SLOT_SLAVES(c, slot) || node = zend_hash_index_find(SLOT_SLAVES(c,slot), slaveidx==NULL)) {
+    if (!SLOT_SLAVES(c, slot) || (node = zend_hash_index_find(SLOT_SLAVES(c,slot), slaveidx==NULL))) {
         return NULL;
     }
 
     /* Success, return the slave */
-    return (*node)->sock;
+    return node->sock;
 }
 
 /* Read the response from a cluster */
@@ -666,7 +666,7 @@ cluster_node_add_slave(redisClusterNode *master, redisClusterNode *slave)
         index = master->slaves->nNextFreeElement;
     }
 
-    return zend_hash_index_update(master->slaves, index, &slave) != SUCCESS;
+    return zend_hash_index_update_ptr(master->slaves, index, slave) == NULL;
 }
 
 /* Sanity check/validation for CLUSTER SLOTS command */
@@ -682,7 +682,7 @@ static int cluster_map_slots(redisCluster *c, clusterReply *r) {
     int i,j, hlen, klen;
     short low, high;
     clusterReply *r2, *r3;
-    redisClusterNode *ppnode, *master, *slave;
+    redisClusterNode *pnode, *master, *slave;
     unsigned short port;
     char *host, key[1024];
 
@@ -753,7 +753,7 @@ PHPAPI void cluster_free_node(redisClusterNode *node) {
 
 /* Get or create a redisClusterNode that corresponds to the asking redirection */
 static redisClusterNode *cluster_get_asking_node(redisCluster *c TSRMLS_DC) {
-    redisClusterNode *ppNode;
+    redisClusterNode *pNode;
     char key[1024];
     int key_len;
 
@@ -761,7 +761,7 @@ static redisClusterNode *cluster_get_asking_node(redisCluster *c TSRMLS_DC) {
     key_len = snprintf(key, sizeof(key), "%s:%u", c->redir_host, c->redir_port);
 
     /* See if we've already attached to it */
-    if((pNode = zend_hash_str_find_ptr(c->nodes, key, key_len+1))!=NULL)
+    if((pNode = zend_hash_str_find_ptr(c->nodes, key, key_len+1))!=NULL) {
         return pNode;
     }
 
@@ -770,7 +770,7 @@ static redisClusterNode *cluster_get_asking_node(redisCluster *c TSRMLS_DC) {
         c->redir_port, c->redir_slot, 0);
 
     /* Return the node */
-   return pNode;
+    return pNode;
 }
 
 /* Get or create a node at the host:port we were asked to check, and return the
@@ -1400,7 +1400,7 @@ PHPAPI void cluster_bulk_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,
             efree(resp);
             add_next_index_zval(&c->multi_resp, z);
         } else {
-            add_next_index_stringl(&c->multi_resp, resp, c->reply_len, 0);
+            add_next_index_stringl(&c->multi_resp, resp, c->reply_len);
         }
     }
 }
@@ -1506,7 +1506,7 @@ PHPAPI void cluster_sub_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,
                              void *ctx)
 {
     subscribeContext *sctx = (subscribeContext*)ctx;
-    zval *z_tab, *z_tmp, *z_ret, *z_args[4];
+    zval *z_tab, *z_tmp, *z_ret, z_args[4];
     int pull=0;
 
     // Consume each MULTI BULK response (one per channel/pattern)
@@ -1764,7 +1764,7 @@ PHPAPI void cluster_variant_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,
                 add_next_index_bool(&c->multi_resp, 1);
                 break;
             case TYPE_BULK:
-                add_next_index_stringl(&c->multi_resp, r->str, r->len, 0);
+                add_next_index_stringl(&c->multi_resp, r->str, r->len);
                 break;
             case TYPE_MULTIBULK:
                 cluster_mbulk_variant_resp(r, &c->multi_resp);
@@ -1919,7 +1919,7 @@ PHPAPI void cluster_client_list_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster 
         *return_value = *z_result;
         efree(z_result);
     } else {
-        add_next_index_zval(c->multi_resp, z_result);
+        add_next_index_zval(&c->multi_resp, z_result);
     }
 }
 
@@ -1983,7 +1983,7 @@ PHPAPI void cluster_multi_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS,
             fi->callback(INTERNAL_FUNCTION_PARAM_PASSTHRU, c, fi->ctx);
         } else {
             /* Just add false */
-            add_next_index_bool(c->multi_resp, 0);
+            add_next_index_bool(&c->multi_resp, 0);
         }
         fi = fi->next;
     }
