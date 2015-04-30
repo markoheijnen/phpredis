@@ -11,25 +11,6 @@
 #define REDIS_CLUSTER_SLOTS 16384
 #define REDIS_CLUSTER_MOD   (REDIS_CLUSTER_SLOTS-1)
 
-/* Minimum valid CLUSTER NODES line element count
-   and the minimum we expect if there are slots */
-#define CLUSTER_MIN_NODE_LINE   8
-#define CLUSTER_MIN_SLOTS_COUNT 9
-
-/* Length of a cluster name */
-#define CLUSTER_NAME_LEN 40
-
-/* The parts for our cluster nodes command */
-#define CLUSTER_NODES_HASH        0
-#define CLUSTER_NODES_HOST_PORT   1
-#define CLUSTER_NODES_TYPE        2
-#define CLUSTER_NODES_MASTER_HASH 3
-#define CLUSTER_NODES_PING        4
-#define CLUSTER_NODES_PONG        5
-#define CLUSTER_NODES_EPOCH       6
-#define CLUSTER_NODES_CONNECTED   7
-#define CLUSTER_SLOTS             8
-
 /* Complete representation for various commands in RESP */
 #define RESP_MULTI_CMD         "*1\r\n$5\r\nMULTI\r\n"
 #define RESP_EXEC_CMD          "*1\r\n$4\r\nEXEC\r\n"
@@ -39,6 +20,8 @@
 #define RESP_ASKING_CMD        "*1\r\n$6\r\nASKING\r\n"
 #define RESP_READONLY_CMD      "*1\r\n$8\r\nREADONLY\r\n"
 #define RESP_READWRITE_CMD     "*1\r\n$9\r\nREADWRITE\r\n"
+
+#define RESP_READONLY_CMD_LEN (sizeof(RESP_READONLY_CMD)-1)
 
 /* MOVED/ASK comparison macros */
 #define IS_MOVED(p) (p[0]=='M' && p[1]=='O' && p[2]=='V' && p[3]=='E' && \
@@ -52,10 +35,15 @@
 /* Initial allocation size for key distribution container */
 #define CLUSTER_KEYDIST_ALLOC 8
 
-/* Slot/RedisSock/RedisSock->stream macros */
+/* Macros to access nodes, sockets, and streams for a given slot */
 #define SLOT(c,s) (c->master[s])
 #define SLOT_SOCK(c,s) (SLOT(c,s)->sock)
 #define SLOT_STREAM(c,s) (SLOT_SOCK(c,s)->stream)
+#define SLOT_SLAVES(c,s) (c->master[s]->slaves)
+
+/* Macros to access socket and stream for the node we're communicating with */
+#define CMD_SOCK(c) (c->cmd_sock)
+#define CMD_STREAM(c) (c->cmd_sock->stream)
 
 /* Compare redirection slot information with what we have */
 #define CLUSTER_REDIR_CMP(c) \
@@ -78,6 +66,16 @@
         c->err_len = 0; \
     } \
     c->clusterdown = 0;
+
+/* Protected sending of data down the wire to a RedisSock->stream */
+#define CLUSTER_SEND_PAYLOAD(sock, buf, len) \
+    (sock && sock->stream && !redis_check_eof(sock, 1 TSRMLS_CC) && \
+     php_stream_write(sock->stream, buf, len)==len)
+
+/* Macro to read our reply type character */
+#define CLUSTER_VALIDATE_REPLY_TYPE(sock, type) \
+    (redis_check_eof(sock, 1 TSRMLS_CC) == 0 && \
+     (php_stream_getc(sock->stream) == type))
 
 /* Reset our last single line reply buffer and length */
 #define CLUSTER_CLEAR_REPLY(c) \
@@ -178,9 +176,19 @@ typedef struct redisCluster {
     /* Object reference for Zend */
     zend_object std;
 
-    /* Timeout and read timeout */
+    /* Timeout and read timeout (for normal operations) */
     double timeout;
     double read_timeout;
+
+    /* How long in milliseconds should we wait when being bounced around */
+    long waitms;
+
+    /* Are we flagged as being in readonly mode, meaning we could fall back to
+     * a given master's slave */
+    short readonly;
+
+    /* RedisCluster failover options (never, on error, to load balance) */
+    short failover;
 
     /* Hash table of seed host/ports */
     HashTable *seeds;
@@ -195,6 +203,10 @@ typedef struct redisCluster {
     clusterFoldItem *multi_head;
     clusterFoldItem *multi_curr;
 
+    /* When we issue EXEC to nodes, we need to keep track of how many replies
+     * we have, as this can fail for various reasons (EXECABORT, watch, etc.) */
+    char multi_len[REDIS_CLUSTER_SLOTS];
+
     /* Variable to store MULTI response */
     zval multi_resp;
 
@@ -205,17 +217,15 @@ typedef struct redisCluster {
     char *err;
     int err_len;
 
-    /* The slot where we should read replies */
-    short reply_slot;
+    /* The slot our command is operating on, as well as it's socket */
+    unsigned short cmd_slot;
+    RedisSock *cmd_sock;
 
     /* The slot where we're subscribed */
     short subscribed_slot;
 
-    /* One RedisSock* struct for serialization and prefix information */
+    /* One RedisSock struct for serialization and prefix information */
     RedisSock *flags;
-
-    /* Cluster distribution mode (speed, vs. maintaining order of execution) */
-    short dist_mode;
 
     /* The first line of our last reply, not including our reply type byte 
      * or the trailing \r\n */
@@ -241,8 +251,8 @@ struct clusterFoldItem {
     /* Response processing callback */
     cluster_cb callback;
 
-    /* The slot where this response was sent */
-    short slot;
+    /* The actual socket where we send this request */
+    unsigned short slot;
 
     /* Any context we need to send to our callback */
     void *ctx;
@@ -299,8 +309,8 @@ typedef struct clusterMultiCmd {
  * we don't encode errors, here as that's handled in the cluster structure. */
 typedef struct clusterReply {
     REDIS_REPLY_TYPE type;         /* Our reply type */
-    long long integer;             /* Integer reply */
-    size_t len;                    /* Length of our string */
+    size_t integer;                /* Integer reply */
+    long long len;                 /* Length of our string */
     char *str;                     /* String reply */
     size_t elements;               /* Count of array elements */
     struct clusterReply **element; /* Array elements */
@@ -318,7 +328,7 @@ void cluster_dist_free(HashTable *ht);
 int cluster_dist_add_key(redisCluster *c, HashTable *ht, char *key, 
     int key_len, clusterKeyVal **kv);
 void cluster_dist_add_val(redisCluster *c, clusterKeyVal *kv, zval *val 
-    TSRMLS_CC);
+    TSRMLS_DC);
 
 /* Aggregation for multi commands like MGET, MSET, and MSETNX */
 void cluster_multi_init(clusterMultiCmd *mc, char *kw, int kw_len);
@@ -330,97 +340,104 @@ void cluster_multi_fini(clusterMultiCmd *mc);
 unsigned short cluster_hash_key_zval(zval *key);
 unsigned short cluster_hash_key(const char *key, int len);
 
-PHPAPI short cluster_send_command(redisCluster *c, short slot, const char *cmd, 
+/* Get the current time in miliseconds */
+long long mstime(void);
+
+PHP_REDIS_API short cluster_send_command(redisCluster *c, short slot, const char *cmd, 
     int cmd_len TSRMLS_DC);
 
-PHPAPI void cluster_disconnect(redisCluster *c TSRMLS_DC);
+PHP_REDIS_API void cluster_disconnect(redisCluster *c TSRMLS_DC);
 
-PHPAPI int cluster_send_exec(redisCluster *c, short slot TSRMLS_DC);
-PHPAPI int cluster_send_discard(redisCluster *c, short slot TSRMLS_DC);
-PHPAPI int cluster_abort_exec(redisCluster *c TSRMLS_DC);
-PHPAPI int cluster_reset_multi(redisCluster *c);
+PHP_REDIS_API int cluster_send_exec(redisCluster *c, short slot TSRMLS_DC);
+PHP_REDIS_API int cluster_send_discard(redisCluster *c, short slot TSRMLS_DC);
+PHP_REDIS_API int cluster_abort_exec(redisCluster *c TSRMLS_DC);
+PHP_REDIS_API int cluster_reset_multi(redisCluster *c);
 
-PHPAPI short cluster_find_slot(redisCluster *c, const char *host,
+PHP_REDIS_API short cluster_find_slot(redisCluster *c, const char *host,
     unsigned short port);
-PHPAPI int cluster_send_slot(redisCluster *c, short slot, char *cmd, 
+PHP_REDIS_API int cluster_send_slot(redisCluster *c, short slot, char *cmd, 
     int cmd_len, REDIS_REPLY_TYPE rtype TSRMLS_DC);
 
-PHPAPI int cluster_init_seeds(redisCluster *c, HashTable *ht_seeds);
-PHPAPI int cluster_map_keyspace(redisCluster *c TSRMLS_DC);
-PHPAPI void cluster_free_node(redisClusterNode *node);
+PHP_REDIS_API int cluster_init_seeds(redisCluster *c, HashTable *ht_seeds);
+PHP_REDIS_API int cluster_map_keyspace(redisCluster *c TSRMLS_DC);
+PHP_REDIS_API void cluster_free_node(redisClusterNode *node);
 
-PHPAPI char **cluster_sock_read_multibulk_reply(RedisSock *redis_sock,
+PHP_REDIS_API char **cluster_sock_read_multibulk_reply(RedisSock *redis_sock,
     int *len TSRMLS_DC);
 
 /*
  * Redis Cluster response handlers.  Our response handlers generally take the
  * following form:
- *      PHPAPI void handler(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
+ *      PHP_REDIS_API void handler(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
  *          void *ctx)
  *
  * Reply handlers are responsible for setting the PHP return value (either to
  * something valid, or FALSE in the case of some failures).
  */
 
-PHPAPI void cluster_bool_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
+PHP_REDIS_API void cluster_bool_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
     void *ctx);
-PHPAPI void cluster_ping_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,
+PHP_REDIS_API void cluster_ping_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,
     void *ctx);
-PHPAPI void cluster_bulk_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
+PHP_REDIS_API void cluster_bulk_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
     void *ctx);
-PHPAPI void cluster_bulk_raw_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,    
+PHP_REDIS_API void cluster_bulk_raw_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,    
     void *ctx);
-PHPAPI void cluster_dbl_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
+PHP_REDIS_API void cluster_dbl_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
     void *ctx);
-PHPAPI void cluster_1_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
+PHP_REDIS_API void cluster_1_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
     void *ctx);
-PHPAPI void cluster_long_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
+PHP_REDIS_API void cluster_long_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
     void *ctx);
-PHPAPI void cluster_type_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
+PHP_REDIS_API void cluster_type_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c, 
     void *ctx);
-PHPAPI void cluster_sub_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,
+PHP_REDIS_API void cluster_sub_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,
     void *ctx);
-PHPAPI void cluster_unsub_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,
+PHP_REDIS_API void cluster_unsub_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,
     void *ctx);
 
 /* Generic/Variant handler for stuff like EVAL */
-PHPAPI void cluster_variant_resp(INTERNAL_FUNCTION_PARAMETERS,
+PHP_REDIS_API void cluster_variant_resp(INTERNAL_FUNCTION_PARAMETERS,
     redisCluster *c, void *ctx);
 
 /* MULTI BULK response functions */
-PHPAPI void cluster_gen_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS, 
+PHP_REDIS_API void cluster_gen_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS, 
     redisCluster *c, mbulk_cb func, void *ctx);
-PHPAPI void cluster_mbulk_raw_resp(INTERNAL_FUNCTION_PARAMETERS, 
+PHP_REDIS_API void cluster_mbulk_raw_resp(INTERNAL_FUNCTION_PARAMETERS, 
     redisCluster *c, void *ctx);
-PHPAPI void cluster_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS, 
+PHP_REDIS_API void cluster_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS, 
     redisCluster *c, void *ctx);
-PHPAPI void cluster_mbulk_zipstr_resp(INTERNAL_FUNCTION_PARAMETERS,
+PHP_REDIS_API void cluster_mbulk_zipstr_resp(INTERNAL_FUNCTION_PARAMETERS,
     redisCluster *c, void *ctx);
-PHPAPI void cluster_mbulk_zipdbl_resp(INTERNAL_FUNCTION_PARAMETERS,
+PHP_REDIS_API void cluster_mbulk_zipdbl_resp(INTERNAL_FUNCTION_PARAMETERS,
     redisCluster *c, void *ctx);
-PHPAPI void cluster_mbulk_assoc_resp(INTERNAL_FUNCTION_PARAMETERS, 
+PHP_REDIS_API void cluster_mbulk_assoc_resp(INTERNAL_FUNCTION_PARAMETERS, 
     redisCluster *c, void *ctx);
-PHPAPI void cluster_multi_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS,
+PHP_REDIS_API void cluster_multi_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS,
     redisCluster *c, void *ctx);
-PHPAPI zval *cluster_zval_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS, 
+PHP_REDIS_API zval *cluster_zval_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS, 
     redisCluster *c, int pull, mbulk_cb cb);
 
 /* Handlers for things like DEL/MGET/MSET/MSETNX */
-PHPAPI void cluster_del_resp(INTERNAL_FUNCTION_PARAMETERS, 
+PHP_REDIS_API void cluster_del_resp(INTERNAL_FUNCTION_PARAMETERS, 
     redisCluster *c, void *ctx);
-PHPAPI void cluster_mbulk_mget_resp(INTERNAL_FUNCTION_PARAMETERS, 
+PHP_REDIS_API void cluster_mbulk_mget_resp(INTERNAL_FUNCTION_PARAMETERS, 
     redisCluster *c, void *ctx);
-PHPAPI void cluster_mset_resp(INTERNAL_FUNCTION_PARAMETERS,
+PHP_REDIS_API void cluster_mset_resp(INTERNAL_FUNCTION_PARAMETERS,
     redisCluster *c, void *ctx);
-PHPAPI void cluster_msetnx_resp(INTERNAL_FUNCTION_PARAMETERS,
+PHP_REDIS_API void cluster_msetnx_resp(INTERNAL_FUNCTION_PARAMETERS,
     redisCluster *c, void *ctx);
 
 /* Response handler for ZSCAN, SSCAN, and HSCAN */
-PHPAPI int cluster_scan_resp(INTERNAL_FUNCTION_PARAMETERS,
+PHP_REDIS_API int cluster_scan_resp(INTERNAL_FUNCTION_PARAMETERS,
     redisCluster *c, REDIS_SCAN_TYPE type, long *it);
 
 /* INFO response handler */
-PHPAPI void cluster_info_resp(INTERNAL_FUNCTION_PARAMETERS,
+PHP_REDIS_API void cluster_info_resp(INTERNAL_FUNCTION_PARAMETERS,
+    redisCluster *c, void *ctx);
+
+/* CLIENT LIST response handler */
+PHP_REDIS_API void cluster_client_list_resp(INTERNAL_FUNCTION_PARAMETERS, 
     redisCluster *c, void *ctx);
 
 /* MULTI BULK processing callbacks */

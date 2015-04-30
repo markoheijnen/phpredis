@@ -42,8 +42,8 @@ extern zend_class_entry *redis_ce;
 zend_class_entry *redis_array_ce;
 
 ZEND_BEGIN_ARG_INFO_EX(__redis_array_call_args, 0, 0, 2)
-	ZEND_ARG_INFO(0, function_name)
-	ZEND_ARG_INFO(0, arguments)
+    ZEND_ARG_INFO(0, function_name)
+    ZEND_ARG_INFO(0, arguments)
 ZEND_END_ARG_INFO()
 
 zend_function_entry redis_array_functions[] = {
@@ -72,7 +72,7 @@ zend_function_entry redis_array_functions[] = {
      PHP_ME(RedisArray, save, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(RedisArray, bgsave, NULL, ZEND_ACC_PUBLIC)
 
-	 /* Multi/Exec */
+     /* Multi/Exec */
      PHP_ME(RedisArray, multi, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(RedisArray, exec, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(RedisArray, discard, NULL, ZEND_ACC_PUBLIC)
@@ -137,7 +137,7 @@ PHPAPI int redis_array_get(zval *id, RedisArray **ra TSRMLS_DC)
     zval *socket;
 
     if (Z_TYPE_P(id) != IS_OBJECT || (socket =zend_hash_str_find(Z_OBJPROP_P(id), "socket",
-                    sizeof("socket") - 1)) == NULL) {
+                                  sizeof("socket") - 1)) == NULL) {
         return -1;
     }
 
@@ -202,7 +202,7 @@ uint32_t rcrc32(const char *s, size_t sz) {
 }
 
 /* {{{ proto RedisArray RedisArray::__construct()
-   Public constructor */
+    Public constructor */
 PHP_METHOD(RedisArray, __construct)
 {
     zval *z0, z_fun, z_dist, *zpData, *z_opts = NULL;
@@ -225,9 +225,9 @@ PHP_METHOD(RedisArray, __construct)
 
         /* extract previous ring. */
         if ((zpData = zend_hash_str_find(hOpts, "previous", sizeof("previous") - 1)) != NULL && Z_TYPE_P(zpData) == IS_ARRAY
-                && zend_hash_num_elements(Z_ARRVAL_P(zpData)) != 0) {
+            && zend_hash_num_elements(Z_ARRVAL_P(zpData)) != 0) {
             /* consider previous array as non-existent if empty. */
-            hPrev = Z_ARRVAL_P(zpData);
+                hPrev = Z_ARRVAL_P(zpData);
         }
 
         /* extract function name. */
@@ -274,19 +274,23 @@ PHP_METHOD(RedisArray, __construct)
         if ((zpData = zend_hash_str_find(hOpts, "lazy_connect", sizeof("lazy_connect") - 1)) != NULL && (Z_TYPE_P(zpData) == IS_TRUE || Z_TYPE_P(zpData) == IS_FALSE)) {
             b_lazy_connect = Z_LVAL_P(zpData);
         }
-
+        
         /* extract connect_timeout option */
         zval *z_connect_timeout_p;
         if ((z_connect_timeout_p = zend_hash_str_find(hOpts, "connect_timeout", sizeof("connect_timeout") - 1)) != NULL) {
-            if (Z_TYPE_P(z_connect_timeout_p) == IS_DOUBLE || Z_TYPE_P(z_connect_timeout_p) == IS_STRING) {
+            if (Z_TYPE_P(z_connect_timeout_p) == IS_DOUBLE || 
+                Z_TYPE_P(z_connect_timeout_p) == IS_STRING ||
+                Z_TYPE_P(z_connect_timeout_p) == IS_LONG) 
+            {
                 if (Z_TYPE_P(z_connect_timeout_p) == IS_DOUBLE) {
                     d_connect_timeout = Z_DVAL_P(z_connect_timeout_p);
-                }
-                else {
+                } else if (Z_TYPE_P(z_connect_timeout_p) == IS_LONG) {
+                    d_connect_timeout = Z_LVAL_P(z_connect_timeout_p);
+                } else {
                     d_connect_timeout = atof(Z_STRVAL_P(z_connect_timeout_p));
                 }
             }
-        }		
+        }       
     }
 
     /* extract either name of list of hosts from z0 */
@@ -304,11 +308,19 @@ PHP_METHOD(RedisArray, __construct)
             break;
     }
 
-    if(ra) {
+    if (ra) {
         ra->auto_rehash = b_autorehash;
         ra->connect_timeout = d_connect_timeout;
-        if(ra->prev) ra->prev->auto_rehash = b_autorehash;
+
+        if (ra->prev) {
+            ra->prev->auto_rehash = b_autorehash;
+        }
+
+#if PHP_VERSION_ID >= 50400
         id = zend_list_insert(ra, le_redis_array TSRMLS_CC);
+#else
+        id = zend_list_insert(ra, le_redis_array);
+#endif
         add_property_resource(getThis(), "socket", Z_RES_P(id));
     }
 }
@@ -356,7 +368,7 @@ ra_forward_call(INTERNAL_FUNCTION_PARAMETERS, RedisArray *ra, const char *cmd, i
     }
 
     /* pass call through */
-    ZVAL_STRING(&z_fun, cmd);	/* method name */
+    ZVAL_STRING(&z_fun, cmd);   /* method name */
     z_callargs = emalloc(argc * sizeof(zval));
 
     /* copy args to array */
@@ -878,7 +890,7 @@ PHP_METHOD(RedisArray, mget)
         /* Find our node */
         redis_instances[i] = ra_find_node(ra, key_lookup, key_len, &pos[i] TSRMLS_CC);
 
-        argc_each[pos[i]]++;	/* count number of keys per node */
+        argc_each[pos[i]]++;    /* count number of keys per node */
         argv[i] = data;
         ++i;
     } ZEND_HASH_FOREACH_END();
@@ -1012,7 +1024,7 @@ PHP_METHOD(RedisArray, mset)
         }
 
         redis_instances[i] = ra_find_node(ra, key->val, (int)key->len, &pos[i] TSRMLS_CC);
-        argc_each[pos[i]]++;	/* count number of keys per node */
+        argc_each[pos[i]]++;    /* count number of keys per node */
         argv[i] = data;
         keys[i] = key->val;
         key_lens[i] = (int)key->len;
@@ -1046,7 +1058,7 @@ PHP_METHOD(RedisArray, mset)
         {
             zval_dtor(z_argarray);
             efree(z_argarray);
-            continue;				/* don't run empty MSETs */
+            continue;               /* don't run empty MSETs */
         }
 
         if(ra->index) { /* add MULTI */
@@ -1152,7 +1164,7 @@ PHP_METHOD(RedisArray, del)
         }
 
         redis_instances[i] = ra_find_node(ra, Z_STRVAL_P(data), Z_STRLEN_P(data), &pos[i] TSRMLS_CC);
-        argc_each[pos[i]]++;	/* count number of keys per node */
+        argc_each[pos[i]]++;    /* count number of keys per node */
         argv[i] = data;
         ++i;
     } ZEND_HASH_FOREACH_END();
@@ -1175,7 +1187,7 @@ PHP_METHOD(RedisArray, del)
             found++;
         }
 
-        if(!found) {	// don't run empty DELs
+        if(!found) {    // don't run empty DELs
             zval_dtor(z_argarray);
             efree(z_argarray);
             continue;
@@ -1192,9 +1204,9 @@ PHP_METHOD(RedisArray, del)
         if(ra->index) {
             ra_index_del(z_argarray, redis_inst TSRMLS_CC); /* use SREM to remove keys from node index */
             ra_index_exec(redis_inst, &z_tmp, 0 TSRMLS_CC); /* run EXEC */
-            total += Z_LVAL(z_tmp);	/* increment total from multi/exec block */
+            total += Z_LVAL(z_tmp); /* increment total from multi/exec block */
         } else {
-            total += Z_LVAL(z_ret);	/* increment total from single command */
+            total += Z_LVAL(z_ret); /* increment total from single command */
         }
 
         zval_dtor(&z_ret);
