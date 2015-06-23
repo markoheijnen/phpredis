@@ -46,7 +46,7 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
 
 /* Simple macro to free our enqueued callbacks after we EXEC */
 #define CLUSTER_FREE_QUEUE(c) \
-    clusterFoldItem *_item = c->multi_head, *_tmp; \
+    _item = c->multi_head; \
     while(_item) { \
         _tmp = _item->next; \
         efree(_item); \
@@ -56,7 +56,6 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
 
 /* Reset anything flagged as MULTI */
 #define CLUSTER_RESET_MULTI(c) \
-    redisClusterNode *_node; \
     ZEND_HASH_FOREACH_PTR(c->nodes, _node) { \
         _node->sock->watching = 0; \
         _node->sock->mode     = ATOMIC; \
@@ -66,9 +65,9 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
 
 /* Simple 1-1 command -> response macro */
 #define CLUSTER_PROCESS_CMD(cmdname, resp_func, readcmd) \
+    char *cmd; int cmd_len; short slot; void *ctx=NULL; \
     redisCluster *c = Z_REDIS_OBJ_P(getThis()); \
     c->readonly = CLUSTER_IS_ATOMIC(c) && readcmd; \
-    char *cmd; int cmd_len; short slot; void *ctx=NULL; \
     if(redis_##cmdname##_cmd(INTERNAL_FUNCTION_PARAM_PASSTHRU,c->flags, &cmd, \
                              &cmd_len, &slot, &ctx)==FAILURE) { \
         RETURN_FALSE; \
@@ -86,9 +85,9 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
         
 /* More generic processing, where only the keyword differs */
 #define CLUSTER_PROCESS_KW_CMD(kw, cmdfunc, resp_func, readcmd) \
+    char *cmd; int cmd_len; short slot; void *ctx=NULL; \
     redisCluster *c = Z_REDIS_OBJ_P(getThis()); \
     c->readonly = CLUSTER_IS_ATOMIC(c) && readcmd; \
-    char *cmd; int cmd_len; short slot; void *ctx=NULL; \
     if(cmdfunc(INTERNAL_FUNCTION_PARAM_PASSTHRU, c->flags, kw, &cmd, &cmd_len,\
                &slot,&ctx)==FAILURE) { \
         RETURN_FALSE; \

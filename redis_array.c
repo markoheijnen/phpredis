@@ -213,6 +213,8 @@ PHP_METHOD(RedisArray, __construct)
     long l_retry_interval = 0;
     zend_bool b_lazy_connect = 0;
     double d_connect_timeout = 0;
+	zval *z_retry_interval_p;
+	zval *z_connect_timeout_p;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|a", &z0, &z_opts) == FAILURE) {
         RETURN_FALSE;
@@ -258,7 +260,7 @@ PHP_METHOD(RedisArray, __construct)
         }
 
         /* extract retry_interval option. */
-        zval *z_retry_interval_p;
+        
         if ((z_retry_interval_p = zend_hash_str_find(hOpts, "retry_interval", sizeof("retry_interval") - 1)) != NULL) {
             if (Z_TYPE_P(z_retry_interval_p) == IS_LONG || Z_TYPE_P(z_retry_interval_p) == IS_STRING) {
                 if (Z_TYPE_P(z_retry_interval_p) == IS_LONG) {
@@ -276,7 +278,7 @@ PHP_METHOD(RedisArray, __construct)
         }
         
         /* extract connect_timeout option */
-        zval *z_connect_timeout_p;
+        
         if ((z_connect_timeout_p = zend_hash_str_find(hOpts, "connect_timeout", sizeof("connect_timeout") - 1)) != NULL) {
             if (Z_TYPE_P(z_connect_timeout_p) == IS_DOUBLE || 
                 Z_TYPE_P(z_connect_timeout_p) == IS_STRING ||
@@ -982,6 +984,8 @@ PHP_METHOD(RedisArray, mset)
     unsigned long free_idx = 0;
     int type, *key_lens;
     unsigned long idx;
+	int found = 0;
+	zval z_tmp;
 
     /* Multi/exec support */
     HANDLE_MULTI_EXEC("MSET");
@@ -1019,7 +1023,7 @@ PHP_METHOD(RedisArray, mset)
             key->len--; /* We don't want the null terminator */
         } else {
             key->len = snprintf(kbuf, sizeof(kbuf), "%ld", (long)idx);
-            key = STR_INIT(kbuf, key->len, 0);
+            key = zend_string_init(kbuf, key->len, 0);
             key_free[free_idx++]=key->val;
         }
 
@@ -1040,13 +1044,13 @@ PHP_METHOD(RedisArray, mset)
         redis_inst = &ra->redis[n];
 
         /* copy args */
-        int found = 0;
+        found = 0;
         z_argarray = safe_emalloc(sizeof(zval), argc, 0);
         array_init(z_argarray);
         for(i = 0; i < argc; ++i) {
             if(pos[i] != n) continue;
 
-            zval z_tmp;
+            
             z_tmp = *argv[i];
             zval_copy_ctor(&z_tmp);
 

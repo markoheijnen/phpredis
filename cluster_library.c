@@ -5,6 +5,7 @@
 #include "cluster_library.h"
 #include "crc16.h"
 #include <zend_exceptions.h>
+#include "zend_smart_str.h"
 
 extern zend_class_entry *redis_cluster_exception_ce;
 
@@ -78,7 +79,7 @@ static void dump_reply(clusterReply *reply, int indent) {
         php_printf("%s", buf.s->val);
         php_printf("\n");
 
-        STR_RELEASE(buf.s);
+        zend_string_release(buf.s);
     }
 }
 
@@ -197,11 +198,12 @@ cluster_read_sock_resp(RedisSock *redis_sock, REDIS_REPLY_TYPE type,
 {
     clusterReply *r;
 
+    // Error flag in case we go recursive
+    int err = 0;
+
     r = ecalloc(1, sizeof(clusterReply));
     r->type = type;
 
-    // Error flag in case we go recursive
-    int err = 0;
 
     switch(r->type) {
         case TYPE_INT:
@@ -1508,6 +1510,7 @@ PHPAPI void cluster_sub_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,
     subscribeContext *sctx = (subscribeContext*)ctx;
     zval *z_tab, *z_tmp, *z_ret, z_args[4];
     int pull=0;
+	int i;
 
     // Consume each MULTI BULK response (one per channel/pattern)
     while(sctx->argc--) {
@@ -1606,7 +1609,7 @@ PHPAPI void cluster_sub_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,
         // If we have a return value, free it
         if(z_ret) zval_ptr_dtor(z_ret);
         
-        int i;
+        
         for (i = 0; i < tab_idx; i++) {
             zval_ptr_dtor(&z_args[i]);
         }
@@ -1636,6 +1639,7 @@ PHPAPI void cluster_unsub_resp(INTERNAL_FUNCTION_PARAMETERS,
     subscribeContext *sctx = (subscribeContext*)ctx;
     zval *z_tab, *z_chan, *z_flag;
     int pull = 0, argc = sctx->argc;
+	char *flag;
 
     efree(sctx);
     array_init(return_value);
@@ -1666,7 +1670,7 @@ PHPAPI void cluster_unsub_resp(INTERNAL_FUNCTION_PARAMETERS,
         }
 
         // Redis will give us either :1 or :0 here
-        char *flag = Z_STRVAL_P(z_flag);
+        flag = Z_STRVAL_P(z_flag);
 
         // Add result
         add_assoc_bool(return_value, Z_STRVAL_P(z_chan), flag[1]=='1');
@@ -1962,9 +1966,10 @@ PHPAPI zval *cluster_zval_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS,
 PHPAPI void cluster_multi_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS,
                                      redisCluster *c, void *ctx)
 {
+	clusterFoldItem *fi;
     array_init(&c->multi_resp);
 
-    clusterFoldItem *fi = c->multi_head;
+    fi = c->multi_head;
     while(fi) {
         /* Make sure our transaction didn't fail here */
         if (c->multi_len[fi->slot] > -1) {
@@ -1998,12 +2003,13 @@ PHPAPI void cluster_multi_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS,
 PHPAPI void cluster_mbulk_mget_resp(INTERNAL_FUNCTION_PARAMETERS,
                                     redisCluster *c, void *ctx)
 {
+	short fail;
     clusterMultiCtx *mctx = (clusterMultiCtx*)ctx;
 
     /* Protect against an invalid response type, -1 response length, and failure
      * to consume the responses. */
     c->cmd_sock->serializer = c->flags->serializer;
-    short fail = c->reply_type != TYPE_MULTIBULK || c->reply_len == -1 ||
+    fail = c->reply_type != TYPE_MULTIBULK || c->reply_len == -1 ||
         mbulk_resp_loop(c->cmd_sock, mctx->z_multi, c->reply_len, NULL TSRMLS_CC)==FAILURE;
 
     // If we had a failure, pad results with FALSE to indicate failure.  Non

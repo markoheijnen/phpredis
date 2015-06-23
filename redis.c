@@ -645,12 +645,14 @@ PHP_METHOD(Redis, __construct)
    Public Destructor
    */
 PHP_METHOD(Redis,__destruct) {
+	RedisSock *redis_sock;
+	
     if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
         RETURN_FALSE;
     }
 
     // Grab our socket
-    RedisSock *redis_sock;
+    
     if (redis_sock_get(getThis(), &redis_sock TSRMLS_CC, 1) < 0) {
         RETURN_FALSE;
     }
@@ -1862,7 +1864,7 @@ generic_mset(INTERNAL_FUNCTION_PARAMETERS, char *kw, ResultCallback fun) {
                 memcpy(p, _NL, 2); p += 2;
             }
 
-            if(val_free) STR_FREE(val);
+            if(val_free) zend_string_free(val);
             if(key_free) efree(tmp_key);
 
         } ZEND_HASH_FOREACH_END();

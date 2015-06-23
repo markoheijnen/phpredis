@@ -19,6 +19,7 @@
 #include "redis_commands.h"
 #include <ext/standard/php_math.h>
 #include <ext/standard/php_rand.h>
+#include "zend_smart_str.h"
 
 #define UNSERIALIZE_NONE 0
 #define UNSERIALIZE_KEYS 1
@@ -564,7 +565,7 @@ PHPAPI char *redis_sock_read(RedisSock *redis_sock, int *buf_len TSRMLS_DC)
 
 void add_constant_long(zend_class_entry *ce, char *name, int value) {
     zval constval;
-    zend_string *tmp = STR_INIT(name, strlen(name), 1);
+    zend_string *tmp = zend_string_init(name, strlen(name), 1);
     ZVAL_LONG(&constval, value);
     zend_hash_add(&ce->constants_table, tmp, &constval);
 }
@@ -650,7 +651,7 @@ redis_cmd_format_static(char **ret, char *keyword, char *format, ...)
                 smart_str_append_long(&buf, dbl_str->len);
                 smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
                 smart_str_appendl(&buf, dbl_str->val, dbl_str->len);
-                STR_RELEASE(dbl_str);
+                zend_string_release(dbl_str);
             }
                 break;
 
@@ -718,7 +719,7 @@ redis_cmd_format(char **ret, char *format, ...) {
                     smart_str_append_long(&buf, dbl_str->len);
                     smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
                     smart_str_appendl(&buf, dbl_str->val, dbl_str->len);
-                    STR_RELEASE(dbl_str);
+                    zend_string_release(dbl_str);
                 }
                     break;
 
@@ -834,7 +835,7 @@ int redis_cmd_append_sstr_dbl(smart_str *str, double value) {
     retval = redis_cmd_append_sstr(str, dbl_str->val, dbl_str->len);
 
     // Free our double string
-    STR_RELEASE(dbl_str);
+    zend_string_release(dbl_str);
 
     // Return new length
     return retval;
@@ -1202,7 +1203,12 @@ PHPAPI void redis_long_response(INTERNAL_FUNCTION_PARAMETERS,
     }
 
     if(response[0] == ':') {
-        long long ret = atoll(response + 1);
+	#if defined(PHP_WIN32)
+        //long long ret = atoll(response + 1);
+		__int64 ret = _atoi64(response + 1);
+	#else
+		__int64 ret = _atoi64(response + 1);
+	#endif
         IF_MULTI_OR_PIPELINE() {
             if(ret > LONG_MAX) { /* overflow */
                 add_next_index_stringl(z_tab, response+1, response_len-1);
@@ -1990,7 +1996,8 @@ redis_serialize(RedisSock *redis_sock, zval *z, zend_string **val
             zend_hash_init(&ht, 10, NULL, NULL, 0);
 #endif
             php_var_serialize(&sstr, z, &ht TSRMLS_CC);
-            *val = STR_DUP(sstr.s, 0);
+            //*val = STR_DUP(sstr.s, 0);
+			*val = zend_string_init(sstr.s,(*val)->len, 0);
 #if ZEND_MODULE_API_NO >= 20100000
             PHP_VAR_SERIALIZE_DESTROY(ht);
 #else
@@ -2002,7 +2009,7 @@ redis_serialize(RedisSock *redis_sock, zval *z, zend_string **val
         case REDIS_SERIALIZER_IGBINARY:
 #ifdef HAVE_REDIS_IGBINARY
             if(igbinary_serialize(&val8, (size_t *)&sz, z TSRMLS_CC) == 0) {
-                *val = STR_INIT((char*)val8, (int)sz, 0);
+                *val = zend_string_init((char*)val8, (int)sz, 0);
                 return 1;
             }
 #endif

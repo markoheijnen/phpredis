@@ -664,11 +664,11 @@ ra_is_write_cmd(RedisArray *ra, const char *cmd, int cmd_len) {
         cmd_up[i] = toupper(cmd[i]);
     cmd_up[cmd_len] = 0;
 
-    cmd_up_p = STR_INIT(cmd_up, cmd_len, 0);
+    cmd_up_p = zend_string_init(cmd_up, cmd_len, 0);
     ret = zend_hash_exists(Z_ARRVAL(ra->z_pure_cmds), cmd_up_p);
 
     efree(cmd_up);
-    STR_RELEASE(cmd_up_p);
+    zend_string_release(cmd_up_p);
     return !ret;
 }
 

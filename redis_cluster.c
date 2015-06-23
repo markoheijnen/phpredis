@@ -624,7 +624,6 @@ static HashTable *method_args_to_ht(zval *z_args, int argc) {
 static int cluster_mkey_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw, int kw_len,
         zval *z_ret, cluster_cb cb)
 {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
     clusterMultiCmd mc = {0};
     clusterKeyValHT kv;
     zval *z_args;
@@ -632,6 +631,7 @@ static int cluster_mkey_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw, int kw_len,
     HashPosition ptr;
     int i=1, argc = ZEND_NUM_ARGS(), ht_free=0;
     short slot;
+    redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     /* If we don't have any arguments we're invalid */
     if (!argc) return -1;
@@ -712,7 +712,7 @@ static int cluster_mkey_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw, int kw_len,
         cluster_multi_add(&mc, kv.key->val, kv.key->len);
 
         // Free key if we prefixed
-        if(kv.key_free) STR_FREE(kv.key);
+        if(kv.key_free) zend_string_free(kv.key);
 
         // Update the last slot we encountered, and the key we're on
         slot = kv.slot; 
@@ -756,7 +756,6 @@ static int cluster_mkey_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw, int kw_len,
 static int cluster_mset_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw, int kw_len,
         zval *z_ret, cluster_cb cb)
 {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
     clusterKeyValHT kv;
     clusterMultiCmd mc = {0};
     zval *z_arr;
@@ -764,6 +763,7 @@ static int cluster_mset_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw, int kw_len,
     HashPosition ptr;
     int i=1, argc;
     short slot;
+    redisCluster *c = Z_REDIS_OBJ_P(getThis());	
 
     // Parse our arguments
     if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &z_arr)==FAILURE) {
@@ -790,8 +790,8 @@ static int cluster_mset_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw, int kw_len,
     // Add this to our multi cmd, set slot, free key if we prefixed
     cluster_multi_add(&mc, kv.key->val, kv.key->len);
     cluster_multi_add(&mc, kv.val->val, kv.val->len);
-    if(kv.key_free) STR_FREE(kv.key);
-    if(kv.val_free) STR_FREE(kv.val);
+    if(kv.key_free) zend_string_free(kv.key);
+    if(kv.val_free) zend_string_free(kv.val);
 
     // While we've got more keys to set
     slot = kv.slot;
@@ -815,8 +815,8 @@ static int cluster_mset_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw, int kw_len,
         cluster_multi_add(&mc, kv.val->val, kv.val->len);
 
         // Free our key and value if we need to
-        if(kv.key_free) STR_FREE(kv.key);
-        if(kv.val_free) STR_FREE(kv.val);
+        if(kv.key_free) zend_string_free(kv.key);
+        if(kv.val_free) zend_string_free(kv.val);
 
         // Update our slot, increment position
         slot = kv.slot;
@@ -945,13 +945,14 @@ PHP_METHOD(RedisCluster, exists) {
 
 /* {{{ proto array Redis::keys(string pattern) */
 PHP_METHOD(RedisCluster, keys) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     redisClusterNode *node;
     int pat_len, pat_free, cmd_len;
     char *pat, *cmd;
     clusterReply *resp;
     zval z_ret;
     int i;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &pat, &pat_len)
             ==FAILURE)
@@ -1038,10 +1039,11 @@ PHP_METHOD(RedisCluster, spop) {
 
 /* {{{ proto string|array RedisCluster::srandmember(string key, [long count]) */
 PHP_METHOD(RedisCluster, srandmember) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+   
     cluster_cb cb;
     char *cmd; int cmd_len; short slot;
     short have_count;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     /* Treat as readonly */
     c->readonly = CLUSTER_IS_ATOMIC(c);
@@ -1555,10 +1557,11 @@ PHP_METHOD(RedisCluster, setrange) {
 static void generic_zrange_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw,
         zrange_cb fun)
 {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     cluster_cb cb;
     char *cmd; int cmd_len; short slot;
     int withscores=0;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     if(fun(INTERNAL_FUNCTION_PARAM_PASSTHRU, c->flags, kw, &cmd, &cmd_len,
                 &withscores, &slot, NULL)==FAILURE)
@@ -1667,8 +1670,9 @@ PHP_METHOD(RedisCluster, zremrangebylex) {
 
 /* {{{ proto RedisCluster::sort(string key, array options) */
 PHP_METHOD(RedisCluster, sort) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     char *cmd; int cmd_len, have_store; short slot;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     if(redis_sort_cmd(INTERNAL_FUNCTION_PARAM_PASSTHRU, c->flags, &have_store,
                 &cmd, &cmd_len, &slot, NULL)==FAILURE)
@@ -1693,9 +1697,10 @@ PHP_METHOD(RedisCluster, sort) {
 
 /* {{{ proto RedisCluster::object(string subcmd, string key) */
 PHP_METHOD(RedisCluster, object) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     char *cmd; int cmd_len; short slot;
     REDIS_REPLY_TYPE rtype;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     if(redis_object_cmd(INTERNAL_FUNCTION_PARAM_PASSTHRU, c->flags, &rtype,
                 &cmd, &cmd_len, &slot, NULL)==FAILURE)
@@ -1955,11 +1960,12 @@ PHP_METHOD(RedisCluster, _unserialize) {
 
 /* {{{ proto array RedisCluster::_masters() */
 PHP_METHOD(RedisCluster, _masters) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     zval z_ret, z_sub;
     redisClusterNode *node;
     char *host;
     short port;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     array_init(&z_ret);
 
@@ -1979,9 +1985,10 @@ PHP_METHOD(RedisCluster, _masters) {
 }
 
 PHP_METHOD(RedisCluster, _redir) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     char buf[255];
     size_t len;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     len = snprintf(buf, sizeof(buf), "%s:%d", c->redir_host, c->redir_port);
     if(c->redir_host && c->redir_host_len) {
@@ -2014,13 +2021,14 @@ PHP_METHOD(RedisCluster, multi) {
 
 /* {{{ proto bool RedisCluster::watch() */
 PHP_METHOD(RedisCluster, watch) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     HashTable *ht_dist;
     clusterDistList *dl;
     smart_str cmd = {0};
     zval *z_args;
     int argc = ZEND_NUM_ARGS(), i;
     ulong slot;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     // Disallow in MULTI mode
     if(c->flags->mode == MULTI) {
@@ -2094,8 +2102,9 @@ PHP_METHOD(RedisCluster, watch) {
 
 /* {{{ proto bool RedisCluster::unwatch() */
 PHP_METHOD(RedisCluster, unwatch) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     short slot;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     // Send UNWATCH to nodes that need it
     for(slot=0;slot<REDIS_CLUSTER_SLOTS;slot++) {
@@ -2117,8 +2126,12 @@ PHP_METHOD(RedisCluster, unwatch) {
 
 /* {{{ proto array RedisCluster::exec() */
 PHP_METHOD(RedisCluster, exec) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     clusterFoldItem *fi;
+	clusterFoldItem *_item, *_tmp;
+	redisClusterNode *_node;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
+	
 
     // Verify we are in fact in multi mode
     if(CLUSTER_IS_ATOMIC(c)) {
@@ -2160,6 +2173,8 @@ PHP_METHOD(RedisCluster, exec) {
 
 /* {{{ proto bool RedisCluster::discard() */
 PHP_METHOD(RedisCluster, discard) {
+	clusterFoldItem *_item, *_tmp;
+	redisClusterNode *_node;
     redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     if(CLUSTER_IS_ATOMIC(c)) {
@@ -2192,7 +2207,7 @@ cluster_cmd_get_slot(redisCluster *c, zval *z_arg TSRMLS_DC)
     {
         /* Allow for any scalar here */
         if (Z_TYPE_P(z_arg) != IS_STRING) {
-            MAKE_STD_ZVAL(z_tmp);
+            // ???? MAKE_STD_ZVAL(z_tmp);
             *z_tmp = *z_arg;
             zval_copy_ctor(z_tmp);
             convert_to_string(z_tmp);
@@ -2241,11 +2256,12 @@ cluster_cmd_get_slot(redisCluster *c, zval *z_arg TSRMLS_DC)
 cluster_empty_node_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw, 
         REDIS_REPLY_TYPE reply_type, cluster_cb cb)
 {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     char *cmd; 
     int cmd_len;
     zval *z_arg;
     short slot;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &z_arg)==FAILURE) {
         RETURN_FALSE;
@@ -2281,11 +2297,12 @@ cluster_empty_node_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw,
  * the command as constructed by the caller */
 static void cluster_raw_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw, int kw_len) 
 {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     smart_str cmd = {0};
     zval *z_args;
     short slot;
     int i, argc = ZEND_NUM_ARGS();
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     /* Commands using this pass-thru don't need to be enabled in MULTI mode */
     if(!CLUSTER_IS_ATOMIC(c)) {
@@ -2345,13 +2362,14 @@ static void cluster_raw_cmd(INTERNAL_FUNCTION_PARAMETERS, char *kw, int kw_len)
 static void cluster_kscan_cmd(INTERNAL_FUNCTION_PARAMETERS, 
         REDIS_SCAN_TYPE type)
 {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     char *cmd, *pat=NULL, *key=NULL; 
     int cmd_len, key_len=0, pat_len=0, key_free=0;
     short slot;
     zval *z_it;
     HashTable *hash;
     long it, num_ele, count=0;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     // Can't be in MULTI mode
     if(!CLUSTER_IS_ATOMIC(c)) {
@@ -2436,12 +2454,13 @@ static void cluster_kscan_cmd(INTERNAL_FUNCTION_PARAMETERS,
 
 /* {{{ proto RedisCluster::scan(string master, long it [, string pat, long cnt]) */
 PHP_METHOD(RedisCluster, scan) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     char *cmd, *pat=NULL;
     int pat_len=0, cmd_len;
     short slot;
     zval *z_it, *z_node;
     long it, num_ele, count=0;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     /* Treat as read-only */
     c->readonly = CLUSTER_IS_ATOMIC(c);
@@ -2591,13 +2610,14 @@ PHP_METHOD(RedisCluster, lastsave) {
 /* {{{ proto array RedisCluster::info(string key, [string $arg])
  *     proto array RedisCluster::info(array host_port, [string $arg]) */
 PHP_METHOD(RedisCluster, info) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     REDIS_REPLY_TYPE rtype;
     char *cmd, *opt=NULL;
     int cmd_len, opt_len;
     void *ctx = NULL;
     zval *z_arg;
     short slot;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|s", &z_arg, &opt,
                              &opt_len)==FAILURE)
@@ -2643,13 +2663,14 @@ PHP_METHOD(RedisCluster, info) {
  *     proto string RedisCluster::client('getname')
  */
 PHP_METHOD(RedisCluster, client) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     char *cmd, *opt=NULL, *arg=NULL;
     int cmd_len, opt_len, arg_len;
     REDIS_REPLY_TYPE rtype;
     zval *z_node;
     short slot;
     cluster_cb cb;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     /* Parse args */
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zs|s", &z_node, &opt, 
@@ -2784,12 +2805,13 @@ PHP_METHOD(RedisCluster, ping) {
 /* {{{ proto string RedisCluster::echo(string key, string msg)
  *     proto string RedisCluster::echo(array host_port, string msg) */
 PHP_METHOD(RedisCluster, echo) {
-    redisCluster *c = Z_REDIS_OBJ_P(getThis());
+    
     REDIS_REPLY_TYPE rtype;
     zval *z_arg;
     char *cmd, *msg;
     int cmd_len, msg_len;
     short slot;
+	redisCluster *c = Z_REDIS_OBJ_P(getThis());
 
     if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zs", &z_arg, &msg,
                 &msg_len)==FAILURE)
