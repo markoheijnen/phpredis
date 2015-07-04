@@ -30,9 +30,23 @@
 #define SCORE_DECODE_INT  1
 #define SCORE_DECODE_DOUBLE 2
 
+#ifdef ZTS
+    #ifndef basic_globals_id
+    PHPAPI int basic_globals_id;
+    #endif
+#else
+    #ifndef basic_globals
+    PHPAPI php_basic_globals basic_globals;
+    #endif
+#endif
+
 #ifdef PHP_WIN32
     # if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 4
         /* This proto is available from 5.5 on only */
+        PHPAPI int usleep(unsigned int useconds);
+    # endif
+    # if PHP_MAJOR_VERSION == 7
+        /* This proto is available in PHP7 */
         PHPAPI int usleep(unsigned int useconds);
     # endif
 #endif
