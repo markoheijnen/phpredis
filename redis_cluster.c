@@ -232,7 +232,7 @@ static void ht_free_node(zval *data) {
 }
 
 /* Initialize/Register our RedisCluster exceptions */
-PHPAPI zend_class_entry *rediscluster_get_exception_base(int root TSRMLS_DC) {
+PHP_REDIS_API zend_class_entry *rediscluster_get_exception_base(int root TSRMLS_DC) {
 #if HAVE_SPL
     if(!root) {
         if(!spl_rte_ce) {
