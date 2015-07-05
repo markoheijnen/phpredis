@@ -131,7 +131,7 @@ void redis_destructor_redis_array(zend_resource * rsrc TSRMLS_DC)
 /**
  * redis_array_get
  */
-PHPAPI int redis_array_get(zval *id, RedisArray **ra TSRMLS_DC)
+PHP_REDIS_API int redis_array_get(zval *id, RedisArray **ra TSRMLS_DC)
 {
 
     zval *socket;
