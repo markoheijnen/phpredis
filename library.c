@@ -30,18 +30,6 @@
 #define SCORE_DECODE_INT  1
 #define SCORE_DECODE_DOUBLE 2
 
-/*
-#ifdef ZTS
-    #ifndef basic_globals_id
-    PHP_REDIS_API int basic_globals_id;
-    #endif
-#else
-    #ifndef basic_globals
-    PHP_REDIS_API php_basic_globals basic_globals;
-    #endif
-#endif
-*/
-
 #ifdef PHP_WIN32
     # if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 4
         /* This proto is available from 5.5 on only */
