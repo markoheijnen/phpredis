@@ -493,11 +493,12 @@ PHP_REDIS_API char *redis_sock_read_bulk_reply(RedisSock *redis_sock,
 /**
  * redis_sock_read
  */
-PHP_REDIS_API char *redis_sock_read(RedisSock *redis_sock, int *buf_len TSRMLS_DC)
+PHP_REDIS_API char *redis_sock_read(RedisSock *redis_sock, size_t *buf_len TSRMLS_DC)
 {
     char inbuf[1024];
     char *resp = NULL;
     size_t err_len;
+    size_t temp_len;
 
     if(-1 == redis_check_eof(redis_sock, 0 TSRMLS_CC)) {
         return NULL;
@@ -530,7 +531,11 @@ PHP_REDIS_API char *redis_sock_read(RedisSock *redis_sock, int *buf_len TSRMLS_D
             return NULL;
 
         case '$':
-            *buf_len = atoi(inbuf + 1);
+            temp_len = atoi(inbuf + 1);
+            /* Handle Null Bulk String */
+            if(temp_len == -1)
+                return NULL;
+            *buf_len = temp_len;
             resp = redis_sock_read_bulk_reply(redis_sock, *buf_len TSRMLS_CC);
             return resp;
 
@@ -859,7 +864,7 @@ int redis_cmd_append_int(char **cmd, int cmd_len, int append) {
 PHP_REDIS_API void redis_bulk_double_response(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock, zval *z_tab, void *ctx) {
 
     char *response;
-    int response_len;
+    size_t response_len;
     double ret;
 
     if ((response = redis_sock_read(redis_sock, &response_len TSRMLS_CC)) == NULL) {
@@ -882,7 +887,7 @@ PHP_REDIS_API void redis_bulk_double_response(INTERNAL_FUNCTION_PARAMETERS, Redi
 
 PHP_REDIS_API void redis_type_response(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock, zval *z_tab, void *ctx) {
     char *response;
-    int response_len;
+    size_t response_len;
     long l;
 
     if ((response = redis_sock_read(redis_sock, &response_len TSRMLS_CC)) == NULL) {
@@ -917,7 +922,7 @@ PHP_REDIS_API void redis_type_response(INTERNAL_FUNCTION_PARAMETERS, RedisSock *
 
 PHP_REDIS_API void redis_info_response(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock, zval *z_tab, void *ctx) {
     char *response;
-    int response_len;
+    size_t response_len;
     zval *z_ret;
 
     /* Read bulk response */
@@ -1142,7 +1147,7 @@ redis_boolean_response_impl(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 {
 
     char *response;
-    int response_len;
+    size_t response_len;
     char ret;
 
     if ((response = redis_sock_read(redis_sock, &response_len TSRMLS_CC)) == NULL) {
@@ -1190,7 +1195,7 @@ PHP_REDIS_API void redis_long_response(INTERNAL_FUNCTION_PARAMETERS,
 {
 
     char *response;
-    int response_len;
+    size_t response_len;
 
     if ((response = redis_sock_read(redis_sock, &response_len TSRMLS_CC))
                                     == NULL) 
@@ -1374,7 +1379,7 @@ PHP_REDIS_API void redis_1_response(INTERNAL_FUNCTION_PARAMETERS,
 {
 
     char *response;
-    int response_len;
+    size_t response_len;
     char ret;
 
     if ((response = redis_sock_read(redis_sock, &response_len TSRMLS_CC)) 
@@ -1410,7 +1415,7 @@ redis_string_response(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                       zval *z_tab, void *ctx) {
 
     char *response;
-    int response_len;
+    size_t response_len;
 
     if ((response = redis_sock_read(redis_sock, &response_len TSRMLS_CC)) 
                                     == NULL) 
@@ -1449,7 +1454,7 @@ redis_ping_response(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 {
 
     char *response;
-    int response_len;
+    size_t response_len;
 
     if ((response = redis_sock_read(redis_sock, &response_len TSRMLS_CC)) 
                                     == NULL) 
@@ -1661,7 +1666,7 @@ PHP_REDIS_API void redis_send_discard(INTERNAL_FUNCTION_PARAMETERS,
                                RedisSock *redis_sock)
 {
     char *cmd;
-    int response_len, cmd_len;
+    size_t response_len, cmd_len;
     char * response;
 
     cmd_len = redis_cmd_format_static(&cmd, "DISCARD", "");
@@ -1852,7 +1857,7 @@ redis_mbulk_reply_loop(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 PHP_REDIS_API int redis_mbulk_reply_assoc(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock, zval *z_tab, void *ctx)
 {
     char inbuf[1024], *response;
-    int response_len;
+    size_t response_len;
     int i, numElems;
     zval z_multi_result;
 

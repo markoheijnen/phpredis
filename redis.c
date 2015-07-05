@@ -701,7 +701,7 @@ PHP_METHOD(Redis, pconnect)
 PHP_REDIS_API int redis_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent) {
     zval *object;
     zval *socket;
-    int host_len;
+    size_t host_len;
     zval *id;
     char *host = NULL;
     long port = -1;
