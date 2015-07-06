@@ -1076,7 +1076,7 @@ int redis_set_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     zval *z_value, *z_opts=NULL;
     char *key = NULL, *exp_type = NULL, *set_type = NULL;
     zend_string *val;
-    size_t key_len;
+    int key_len;
     int key_free, val_free;
     long expire = -1;
 
