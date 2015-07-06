@@ -324,7 +324,7 @@ int redis_key_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
         void **ctx)
 {
     char *key;
-    size_t key_len;
+    int key_len;
     int key_free;
 
     if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len)
@@ -353,7 +353,7 @@ int redis_key_dbl_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
         void **ctx)
 {
     char *key;
-    size_t key_len;
+    int key_len;
     int key_free;
     double val;
 
@@ -1076,7 +1076,7 @@ int redis_set_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     zval *z_value, *z_opts=NULL;
     char *key = NULL, *exp_type = NULL, *set_type = NULL;
     zend_string *val;
-    size_t key_len;
+    int key_len;
     int key_free, val_free;
     long expire = -1;
 
@@ -1217,7 +1217,7 @@ redis_atomic_increment(INTERNAL_FUNCTION_PARAMETERS, int type,
 {
     char *key;
     int key_free;
-    size_t key_len;
+    int key_len;
     long val = 1;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &key, &key_len,

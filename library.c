@@ -45,7 +45,8 @@ extern zend_class_entry *spl_ce_RuntimeException;
 /* Helper to reselect the proper DB number when we reconnect */
 static int reselect_db(RedisSock *redis_sock TSRMLS_DC) {
     char *cmd, *response;
-    int cmd_len, response_len;
+    int cmd_len;
+	size_t response_len;
 
     cmd_len = redis_cmd_format_static(&cmd, "SELECT", "d", redis_sock->dbNumber);
 
@@ -72,7 +73,8 @@ static int reselect_db(RedisSock *redis_sock TSRMLS_DC) {
 /* Helper to resend AUTH <password> in the case of a reconnect */
 static int resend_auth(RedisSock *redis_sock TSRMLS_DC) {
     char *cmd, *response;
-    int cmd_len, response_len;
+    int cmd_len;
+	size_t response_len;
 
     cmd_len = redis_cmd_format_static(&cmd, "AUTH", "s", redis_sock->auth,
         strlen(redis_sock->auth));
@@ -1010,7 +1012,7 @@ PHP_REDIS_API zval *redis_parse_info_response(char *response) {
  */
 PHP_REDIS_API void redis_client_list_reply(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock, zval *z_tab) {
     char *resp;
-    int resp_len;
+    size_t resp_len;
     zval *z_ret;
 
     /* Make sure we can read the bulk response from Redis */
@@ -1210,10 +1212,10 @@ PHP_REDIS_API void redis_long_response(INTERNAL_FUNCTION_PARAMETERS,
 
     if(response[0] == ':') {
 	#if defined(PHP_WIN32)
-        //long long ret = atoll(response + 1);
 		__int64 ret = _atoi64(response + 1);
 	#else
-		__int64 ret = _atoi64(response + 1);
+		long long ret = atoll(response + 1);
+		//__int64 ret = _atoi64(response + 1);
 	#endif
         IF_MULTI_OR_PIPELINE() {
             if(ret > LONG_MAX) { /* overflow */
@@ -1823,7 +1825,7 @@ redis_mbulk_reply_loop(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                        zval *z_tab, int count, int unserialize)
 {
     char *line;
-    int len;
+    size_t len;
 
     while(count > 0) {
         line = redis_sock_read(redis_sock, &len TSRMLS_CC);

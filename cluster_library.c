@@ -132,7 +132,7 @@ cluster_multibulk_resp_recursive(RedisSock *sock, size_t elements,
         switch(r->type) {
             case TYPE_ERR:
             case TYPE_LINE:
-                if(redis_sock_gets(sock,buf,sizeof(buf),r->len TSRMLS_CC)<0) {
+                if(redis_sock_gets(sock,buf,sizeof(buf),(void *)r->len TSRMLS_CC)<0) {
                     *err = 1;
                     return;
                 }
@@ -2182,7 +2182,7 @@ int mbulk_resp_loop_raw(RedisSock *redis_sock, zval *z_result,
                         long long count, void *ctx TSRMLS_DC)
 {
     char *line;
-    int line_len;
+    size_t line_len;
 
     // Iterate over the number we have
     while(count--) {
@@ -2203,7 +2203,7 @@ int mbulk_resp_loop(RedisSock *redis_sock, zval *z_result,
                     long long count, void *ctx TSRMLS_DC)
 {
     char *line;
-    int line_len;
+    size_t line_len;
 
     /* Iterate over the lines we have to process */
     while(count--) {
@@ -2232,7 +2232,8 @@ int mbulk_resp_loop_zipstr(RedisSock *redis_sock, zval *z_result,
                            long long count, void *ctx TSRMLS_DC)
 {
     char *line, *key;
-    int line_len, key_len;
+    size_t line_len;
+	int key_len;
     long long idx=0;
 
     // Our count wil need to be divisible by 2
@@ -2272,7 +2273,8 @@ int mbulk_resp_loop_zipdbl(RedisSock *redis_sock, zval *z_result,
                            long long count, void *ctx TSRMLS_DC)
 {
     char *line, *key;
-    int line_len, key_len;
+    size_t line_len;
+	int key_len;
     long long idx=0;
 
     // Our context will need to be divisible by 2
@@ -2313,7 +2315,8 @@ int mbulk_resp_loop_assoc(RedisSock *redis_sock, zval *z_result,
                           long long count, void *ctx TSRMLS_DC)
 {
     char *line;
-    int line_len,i=0;
+    size_t line_len;
+	int i=0;
     zval **z_keys = ctx;
 
     // Loop while we've got replies

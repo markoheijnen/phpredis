@@ -387,7 +387,8 @@ static int send_discard_static(RedisSock *redis_sock TSRMLS_DC) {
 
     int result = FAILURE;
     char *cmd, *resp;
-    int resp_len, cmd_len;
+    size_t resp_len;
+	int cmd_len;
 
     /* format our discard command */
     cmd_len = redis_cmd_format_static(&cmd, "DISCARD", "");
@@ -2182,7 +2183,8 @@ PHP_METHOD(Redis, multi)
 
     RedisSock *redis_sock;
     char *cmd;
-    int response_len, cmd_len;
+    size_t response_len;
+	int cmd_len;
     char * response;
     zval *object;
     long multi_value = MULTI;
@@ -2425,7 +2427,8 @@ PHP_METHOD(Redis, exec)
 
 PHP_REDIS_API int redis_response_enqueued(RedisSock *redis_sock TSRMLS_DC) {
     char *resp;
-    int resp_len, ret = 0;
+    size_t resp_len;
+	int ret = 0;
 
     if ((resp = redis_sock_read(redis_sock, &resp_len TSRMLS_CC)) == NULL) {
         return 0;
