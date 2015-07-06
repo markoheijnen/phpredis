@@ -117,7 +117,8 @@ void
 redis_pool_member_auth(redis_pool_member *rpm TSRMLS_DC) {
     RedisSock *redis_sock = rpm->redis_sock;
     char *response, *cmd;
-    int response_len, cmd_len;
+    size_t response_len;
+	int cmd_len;
 
     if(!rpm->auth || !rpm->auth_len) { /* no password given. */
         return;
@@ -137,7 +138,8 @@ static void
 redis_pool_member_select(redis_pool_member *rpm TSRMLS_DC) {
     RedisSock *redis_sock = rpm->redis_sock;
     char *response, *cmd;
-    int response_len, cmd_len;
+    size_t response_len;
+	int cmd_len;
 
     cmd_len = redis_cmd_format_static(&cmd, "SELECT", "d", rpm->database);
 
@@ -426,7 +428,8 @@ PS_WRITE_FUNC(redis)
 PS_DESTROY_FUNC(redis)
 {
     char *cmd, *response, *session;
-    int cmd_len, response_len, session_len;
+    int cmd_len, session_len;
+    size_t response_len;
 
     redis_pool *pool = PS_GET_MOD_DATA();
     redis_pool_member *rpm = redis_pool_get_sock(pool, key->val TSRMLS_CC);
