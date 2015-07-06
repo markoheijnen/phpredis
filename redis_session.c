@@ -386,7 +386,8 @@ PS_READ_FUNC(redis)
 PS_WRITE_FUNC(redis)
 {
     char *cmd, *response, *session;
-    size_t cmd_len, response_len, session_len;
+    size_t cmd_len, response_len;
+	int session_len;
 
     redis_pool *pool = PS_GET_MOD_DATA();
     redis_pool_member *rpm = redis_pool_get_sock(pool, key->val TSRMLS_CC);
