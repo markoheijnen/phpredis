@@ -1210,10 +1210,10 @@ PHP_REDIS_API void redis_long_response(INTERNAL_FUNCTION_PARAMETERS,
 
     if(response[0] == ':') {
 	#if defined(PHP_WIN32)
-        //long long ret = atoll(response + 1);
 		__int64 ret = _atoi64(response + 1);
 	#else
-		__int64 ret = _atoi64(response + 1);
+		long long ret = atoll(response + 1);
+		//__int64 ret = _atoi64(response + 1);
 	#endif
         IF_MULTI_OR_PIPELINE() {
             if(ret > LONG_MAX) { /* overflow */
