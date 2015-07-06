@@ -551,7 +551,7 @@ static int get_key_val_ht(redisCluster *c, HashTable *ht, HashPosition *ptr,
 
     // Prefix our key if we need to, set the slot
     tmp_key      = kv->key->val;
-    kv->key_free = redis_key_prefix(c->flags, &tmp_key, kv->key->len);
+    kv->key_free = redis_key_prefix(c->flags, &tmp_key, (void *)kv->key->len);
     kv->slot     = cluster_hash_key(kv->key->val, kv->key->len);
 
     // Now grab our value
@@ -587,7 +587,7 @@ static int get_key_ht(redisCluster *c, HashTable *ht, HashPosition *ptr,
 
     kv->key = zval_get_string(z_key);
     tmp_key = kv->key->val;
-    kv->key_free = redis_key_prefix(c->flags, &tmp_key, kv->key->len);
+    kv->key_free = redis_key_prefix(c->flags, &tmp_key, (void *)kv->key->len);
 
     // Hash our key
     kv->slot = cluster_hash_key(kv->key->val, kv->key->len);

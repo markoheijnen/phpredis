@@ -132,7 +132,7 @@ cluster_multibulk_resp_recursive(RedisSock *sock, size_t elements,
         switch(r->type) {
             case TYPE_ERR:
             case TYPE_LINE:
-                if(redis_sock_gets(sock,buf,sizeof(buf),r->len TSRMLS_CC)<0) {
+                if(redis_sock_gets(sock,buf,sizeof(buf),(void *)r->len TSRMLS_CC)<0) {
                     *err = 1;
                     return;
                 }
