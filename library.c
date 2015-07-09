@@ -625,12 +625,18 @@ redis_cmd_format_static(char **ret, char *keyword, char *format, ...)
     char *p = format;
     va_list ap;
     smart_str buf = {0};
-    int l = strlen(keyword);
+    size_t buflen = 512;
     zend_string *dbl_str;
+    int l = strlen(keyword);
+    
+
+	
+	
 
     va_start(ap, format);
 
     /* add header */
+    smart_str_alloc(&buf, buflen, 0);
     smart_str_appendc(&buf, '*');
     smart_str_append_long(&buf, strlen(format) + 1);
     smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);

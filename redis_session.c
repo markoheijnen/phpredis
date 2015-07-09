@@ -352,6 +352,7 @@ PS_READ_FUNC(redis)
     char *session, *cmd;
     int session_len, cmd_len;
     char *tmp_val = NULL;
+    size_t temp_len = 0;
 
     redis_pool *pool = PS_GET_MOD_DATA();
     redis_pool_member *rpm = redis_pool_get_sock(pool, key->val TSRMLS_CC);
@@ -369,14 +370,15 @@ PS_READ_FUNC(redis)
         efree(cmd);
         return FAILURE;
     }
-    efree(cmd);
+	// TODO: solve the issue
+    //efree(cmd);
 
     /* read response */
-    if ((tmp_val = redis_sock_read(redis_sock, &(*val)->len TSRMLS_CC)) == NULL) {
+    if ((tmp_val = redis_sock_read(redis_sock, &temp_len TSRMLS_CC)) == NULL) {
         return FAILURE;
     }
 
-    *val = zend_string_init(tmp_val, (*val)->len, 1);
+    *val = zend_string_init(tmp_val, temp_len, 1);
     return SUCCESS;
 }
 /* }}} */
@@ -407,7 +409,8 @@ PS_WRITE_FUNC(redis)
         efree(cmd);
         return FAILURE;
     }
-    efree(cmd);
+// TODO: remove
+//    efree(cmd);
 
     /* read response */
     if ((response = redis_sock_read(redis_sock, &response_len TSRMLS_CC)) == NULL) {
