@@ -705,7 +705,7 @@ PHP_REDIS_API int redis_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent) {
     size_t host_len;
     zval *id;
     char *host = NULL;
-    long port = -1;
+    zend_long port = -1;
     long retry_interval = 0;
 
     char *persistent_id = NULL;
