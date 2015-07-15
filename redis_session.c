@@ -370,8 +370,8 @@ PS_READ_FUNC(redis)
         efree(cmd);
         return FAILURE;
     }
-	// TODO: solve the issue
-    //efree(cmd);
+	
+    efree(cmd);
 
     /* read response */
     if ((tmp_val = redis_sock_read(redis_sock, &temp_len TSRMLS_CC)) == NULL) {
@@ -409,8 +409,8 @@ PS_WRITE_FUNC(redis)
         efree(cmd);
         return FAILURE;
     }
-// TODO: remove
-//    efree(cmd);
+
+    efree(cmd);
 
     /* read response */
     if ((response = redis_sock_read(redis_sock, &response_len TSRMLS_CC)) == NULL) {

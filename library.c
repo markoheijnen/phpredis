@@ -628,10 +628,7 @@ redis_cmd_format_static(char **ret, char *keyword, char *format, ...)
     size_t buflen = 512;
     zend_string *dbl_str;
     int l = strlen(keyword);
-    
-
-	
-	
+    int ret_len;
 
     va_start(ap, format);
 
@@ -695,9 +692,12 @@ redis_cmd_format_static(char **ret, char *keyword, char *format, ...)
     }
     smart_str_0(&buf);
 
-    *ret = buf.s->val;
+    *ret = estrdup(buf.s->val);
+    ret_len = buf.s->len;
 
-    return buf.s->len;
+    smart_str_free(&buf);
+
+    return ret_len;
 }
 
 /**
