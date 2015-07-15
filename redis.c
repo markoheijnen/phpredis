@@ -3109,7 +3109,7 @@ PHP_METHOD(Redis, evalsha)
 {
     zval *object, *args= NULL;
     char *cmd, *sha;
-    int cmd_len, sha_len;
+    size_t cmd_len, sha_len;
     long keys_count = 0;
     RedisSock *redis_sock;
 
@@ -3146,7 +3146,7 @@ PHP_METHOD(Redis, eval)
     zval *object, *args = NULL;
     RedisSock *redis_sock;
     char *script, *cmd = "";
-    int script_len, cmd_len;
+    size_t script_len, cmd_len;
     long keys_count = 0;
 
     // Attempt to parse parameters
