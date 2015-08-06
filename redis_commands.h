@@ -6,12 +6,18 @@
 #include "cluster_library.h"
 
 /* Pick a random slot, any slot (for stuff like publish/subscribe) */
-#define CMD_RAND_SLOT(slot) \
-    if(slot) *slot = rand() % REDIS_CLUSTER_MOD
+#define CMD_RAND_SLOT(slot)  do {					\
+    if (slot) {										\
+	   	*slot = rand() % REDIS_CLUSTER_MOD;			\
+	}												\
+} while (0)
 
 /* Macro for setting the slot if we've been asked to */
-#define CMD_SET_SLOT(slot,key,key_len) \
-    if(slot) *slot = cluster_hash_key(key,key_len);
+#define CMD_SET_SLOT(slot, key) do {							\
+    if (slot) {													\
+		*slot = cluster_hash_key(ZSTR_VAL(key), ZSTR_LEN(key));	\
+	}															\
+} while (0)
 
 /* Simple container so we can push subscribe context out */
 typedef struct subscribeContext {
