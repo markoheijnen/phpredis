@@ -18,7 +18,7 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
     i_obj = Z_REDIS_OBJ_P(object);   \
     m_obj = i_obj->obj; \
     if (!m_obj) {   \
-        php_error_docref(NULL TSRMLS_CC, E_WARNING, "Memcached constructor was not called");    \
+        php_error_docref(NULL, E_WARNING, "Memcached constructor was not called");    \
         return; \
     }
 
@@ -72,7 +72,7 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
                              &cmd_len, &slot, &ctx)==FAILURE) { \
         RETURN_FALSE; \
     } \
-    if(cluster_send_command(c,slot,cmd,cmd_len TSRMLS_CC)<0 || c->err!=NULL) {\
+    if(cluster_send_command(c,slot,cmd,cmd_len)<0 || c->err!=NULL) {\
         efree(cmd); \
         RETURN_FALSE; \
     } \
@@ -92,7 +92,7 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
                &slot,&ctx)==FAILURE) { \
         RETURN_FALSE; \
     } \
-    if(cluster_send_command(c,slot,cmd,cmd_len TSRMLS_CC)<0 || c->err!=NULL) { \
+    if(cluster_send_command(c,slot,cmd,cmd_len)<0 || c->err!=NULL) { \
         efree(cmd); \
         RETURN_FALSE; \
     } \
@@ -104,17 +104,17 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
     resp_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, c, ctx); 
 
 /* For the creation of RedisCluster specific exceptions */
-PHP_REDIS_API zend_class_entry *rediscluster_get_exception_base(int root TSRMLS_DC);
+PHP_REDIS_API zend_class_entry *rediscluster_get_exception_base(int root);
 
 /* Create cluster context */
 zend_object *  create_cluster_context(zend_class_entry *class_type
-                                         TSRMLS_DC);
+                                        );
 
 /* Free cluster context struct */
-void free_cluster_context(void *object TSRMLS_DC);
+void free_cluster_context(void *object);
 
 /* Inittialize our class with PHP */
-void init_rediscluster(TSRMLS_D);
+void init_rediscluster();
 
 /* RedisCluster method implementation */
 PHP_METHOD(RedisCluster, __construct);

@@ -109,7 +109,7 @@ void cluster_free_reply(clusterReply *reply, int free_data) {
 
 static void
 cluster_multibulk_resp_recursive(RedisSock *sock, size_t elements,
-                                 clusterReply **element, int *err TSRMLS_DC)
+                                 clusterReply **element, int *err)
 {
     size_t idx = 0;
     clusterReply *r;
@@ -121,7 +121,7 @@ cluster_multibulk_resp_recursive(RedisSock *sock, size_t elements,
         r = element[idx];
 
         // Bomb out, flag error condition on a communication failure
-        if(redis_read_reply_type(sock, &r->type, &len TSRMLS_CC)<0) {
+        if(redis_read_reply_type(sock, &r->type, &len)<0) {
             *err = 1;
             return;
         }
@@ -132,7 +132,7 @@ cluster_multibulk_resp_recursive(RedisSock *sock, size_t elements,
         switch(r->type) {
             case TYPE_ERR:
             case TYPE_LINE:
-                if(redis_sock_gets(sock,buf,sizeof(buf),(void *)r->len TSRMLS_CC)<0) {
+                if(redis_sock_gets(sock,buf,sizeof(buf),(void *)r->len)<0) {
                     *err = 1;
                     return;
                 }
@@ -142,7 +142,7 @@ cluster_multibulk_resp_recursive(RedisSock *sock, size_t elements,
                 break;
             case TYPE_BULK:
                 if (r->len > 0) {
-                    r->str = redis_sock_read_bulk_reply(sock,r->len TSRMLS_CC);
+                    r->str = redis_sock_read_bulk_reply(sock,r->len);
                     if(!r->str) {
                         *err = 1;
                         return;
@@ -153,7 +153,7 @@ cluster_multibulk_resp_recursive(RedisSock *sock, size_t elements,
                 r->element = ecalloc(r->len,r->len*sizeof(clusterReply*));
                 r->elements = r->len;
                 cluster_multibulk_resp_recursive(sock, r->elements, r->element,
-                    err TSRMLS_CC);
+                    err);
                 if(*err) return;
                 break;
             default:
@@ -186,15 +186,15 @@ static RedisSock *cluster_slot_sock(redisCluster *c, unsigned short slot,
 }
 
 /* Read the response from a cluster */
-clusterReply *cluster_read_resp(redisCluster *c TSRMLS_DC) {
-    return cluster_read_sock_resp(c->cmd_sock,c->reply_type,c->reply_len TSRMLS_CC);
+clusterReply *cluster_read_resp(redisCluster *c) {
+    return cluster_read_sock_resp(c->cmd_sock,c->reply_type,c->reply_len);
 }
 
 /* Read any sort of response from the socket, having already issued the
  * command and consumed the reply type and meta info (length) */
 clusterReply*
 cluster_read_sock_resp(RedisSock *redis_sock, REDIS_REPLY_TYPE type,
-                       size_t len TSRMLS_DC)
+                       size_t len)
 {
     clusterReply *r;
 
@@ -214,7 +214,7 @@ cluster_read_sock_resp(RedisSock *redis_sock, REDIS_REPLY_TYPE type,
             return r;
         case TYPE_BULK:
             r->len = len;
-            r->str = redis_sock_read_bulk_reply(redis_sock, len TSRMLS_CC);
+            r->str = redis_sock_read_bulk_reply(redis_sock, len);
             if(r->len != -1 && !r->str) {
                 cluster_free_reply(r, 1);
                 return NULL;
@@ -225,7 +225,7 @@ cluster_read_sock_resp(RedisSock *redis_sock, REDIS_REPLY_TYPE type,
             if(len != (size_t)-1) {
                 r->element = ecalloc(len, sizeof(clusterReply*)*len);
                 cluster_multibulk_resp_recursive(redis_sock, len, r->element,
-                    &err TSRMLS_CC);
+                    &err);
             }
             break;
         default:
@@ -250,7 +250,7 @@ cluster_read_sock_resp(RedisSock *redis_sock, REDIS_REPLY_TYPE type,
 
 /* Send a command to the specific socket and validate reply type */
 static int cluster_send_direct(RedisSock *redis_sock, char *cmd, int cmd_len,
-                               REDIS_REPLY_TYPE type TSRMLS_DC)
+                               REDIS_REPLY_TYPE type)
 {
     char buf[1024];
 
@@ -266,15 +266,15 @@ static int cluster_send_direct(RedisSock *redis_sock, char *cmd, int cmd_len,
     return 0;
 }
 
-static int cluster_send_asking(RedisSock *redis_sock TSRMLS_DC) {
+static int cluster_send_asking(RedisSock *redis_sock) {
     return cluster_send_direct(redis_sock, RESP_ASKING_CMD,
-        sizeof(RESP_ASKING_CMD)-1, TYPE_LINE TSRMLS_CC);
+        sizeof(RESP_ASKING_CMD)-1, TYPE_LINE);
 }
 
 /* Send READONLY to a specific RedisSock unless it's already flagged as being
  * in READONLY mode.  If we can send the command, we flag the socket as being
  * in that mode. */
-static int cluster_send_readonly(RedisSock *redis_sock TSRMLS_DC) {
+static int cluster_send_readonly(RedisSock *redis_sock) {
     int ret;
 
     /* We don't have to do anything if we're already in readonly mode */
@@ -282,7 +282,7 @@ static int cluster_send_readonly(RedisSock *redis_sock TSRMLS_DC) {
 
     /* Return success if we can send it */
     ret = cluster_send_direct(redis_sock, RESP_READONLY_CMD,
-        sizeof(RESP_READONLY_CMD)-1, TYPE_LINE TSRMLS_CC);
+        sizeof(RESP_READONLY_CMD)-1, TYPE_LINE);
 
     /* Flag this socket as READONLY if our command worked */
     redis_sock->readonly = !ret;
@@ -292,9 +292,9 @@ static int cluster_send_readonly(RedisSock *redis_sock TSRMLS_DC) {
 }
 
 /* Send MULTI to a specific ReidsSock */
-static int cluster_send_multi(redisCluster *c, short slot TSRMLS_DC) {
+static int cluster_send_multi(redisCluster *c, short slot) {
     if (cluster_send_direct(SLOT_SOCK(c,slot), RESP_MULTI_CMD,
-        sizeof(RESP_MULTI_CMD)-1, TYPE_LINE TSRMLS_CC)==0)
+        sizeof(RESP_MULTI_CMD)-1, TYPE_LINE)==0)
     {
         c->cmd_sock->mode = MULTI;
         return 0;
@@ -306,12 +306,12 @@ static int cluster_send_multi(redisCluster *c, short slot TSRMLS_DC) {
  * here because we know we'll only have sent MULTI to the master nodes.  We can't
  * failover inside a transaction, as we don't know if the transaction will only
  * be readonly commands, or contain write commands as well */
-PHP_REDIS_API int cluster_send_exec(redisCluster *c, short slot TSRMLS_DC) {
+PHP_REDIS_API int cluster_send_exec(redisCluster *c, short slot) {
     int retval;
 
     /* Send exec */
     retval = cluster_send_slot(c, slot, RESP_EXEC_CMD, sizeof(RESP_EXEC_CMD)-1,
-        TYPE_MULTIBULK TSRMLS_CC);
+        TYPE_MULTIBULK);
 
     /* We'll either get a length corresponding to the number of commands sent to
      * this node, or -1 in the case of EXECABORT or WATCH failure. */
@@ -321,9 +321,9 @@ PHP_REDIS_API int cluster_send_exec(redisCluster *c, short slot TSRMLS_DC) {
     return retval;
 }
 
-PHP_REDIS_API int cluster_send_discard(redisCluster *c, short slot TSRMLS_DC) {
+PHP_REDIS_API int cluster_send_discard(redisCluster *c, short slot) {
     if (cluster_send_direct(SLOT_SOCK(c,slot), RESP_DISCARD_CMD,
-        sizeof(RESP_DISCARD_CMD)-1, TYPE_LINE TSRMLS_CC))
+        sizeof(RESP_DISCARD_CMD)-1, TYPE_LINE))
     {
         return 0;
     }
@@ -444,13 +444,13 @@ int cluster_dist_add_key(redisCluster *c, HashTable *ht, char *key,
 
 /* Provided a clusterKeyVal, add a value */
 void cluster_dist_add_val(redisCluster *c, clusterKeyVal *kv, zval *z_val
-                         TSRMLS_DC)
+                        )
 {
     zend_string *val;
     int val_free;
 
     // Serialize our value
-    val_free = redis_serialize(c->flags, z_val, &val TSRMLS_CC);
+    val_free = redis_serialize(c->flags, z_val, &val);
 
     // Attach it to the provied keyval entry
     kv->val = val->val;
@@ -608,7 +608,7 @@ static char **split_str_by_delim(char *str, char *delim, int *len) {
 
 /* Execute a CLUSTER SLOTS command against the seed socket, and return the
  * reply or NULL on failure. */
-clusterReply* cluster_get_slots(RedisSock *redis_sock TSRMLS_DC)
+clusterReply* cluster_get_slots(RedisSock *redis_sock)
 {
     clusterReply *r;
     REDIS_REPLY_TYPE type;
@@ -616,14 +616,14 @@ clusterReply* cluster_get_slots(RedisSock *redis_sock TSRMLS_DC)
 
     // Send the command to the socket and consume reply type
     if(redis_sock_write(redis_sock, RESP_CLUSTER_SLOTS_CMD,
-                        sizeof(RESP_CLUSTER_SLOTS_CMD)-1 TSRMLS_CC)<0 ||
-                        redis_read_reply_type(redis_sock, &type, &len TSRMLS_CC)<0)
+                        sizeof(RESP_CLUSTER_SLOTS_CMD)-1)<0 ||
+                        redis_read_reply_type(redis_sock, &type, &len)<0)
     {
         return NULL;
     }
 
     // Consume the rest of our response
-    if((r = cluster_read_sock_resp(redis_sock, type, len TSRMLS_CC))==NULL ||
+    if((r = cluster_read_sock_resp(redis_sock, type, len))==NULL ||
        r->type != TYPE_MULTIBULK || r->elements < 3)
     {
         if(r) cluster_free_reply(r, 1);
@@ -754,7 +754,7 @@ PHP_REDIS_API void cluster_free_node(redisClusterNode *node) {
 }
 
 /* Get or create a redisClusterNode that corresponds to the asking redirection */
-static redisClusterNode *cluster_get_asking_node(redisCluster *c TSRMLS_DC) {
+static redisClusterNode *cluster_get_asking_node(redisCluster *c) {
     redisClusterNode *pNode;
     char key[1024];
     int key_len;
@@ -777,8 +777,8 @@ static redisClusterNode *cluster_get_asking_node(redisCluster *c TSRMLS_DC) {
 
 /* Get or create a node at the host:port we were asked to check, and return the
  * redis_sock for it. */
-static RedisSock *cluster_get_asking_sock(redisCluster *c TSRMLS_DC) {
-    return cluster_get_asking_node(c TSRMLS_CC)->sock;
+static RedisSock *cluster_get_asking_sock(redisCluster *c) {
+    return cluster_get_asking_node(c)->sock;
 }
 
 /* Initialize seeds */
@@ -822,7 +822,7 @@ cluster_init_seeds(redisCluster *cluster, HashTable *ht_seeds) {
 
 /* Initial mapping of our cluster keyspace */
 PHP_REDIS_API int
-cluster_map_keyspace(redisCluster *c TSRMLS_DC) {
+cluster_map_keyspace(redisCluster *c) {
     RedisSock *seed;
     clusterReply *slots=NULL;
     int mapped=0;
@@ -834,12 +834,12 @@ cluster_map_keyspace(redisCluster *c TSRMLS_DC) {
         }
 
         // Attempt to connect to this seed node
-        if(redis_sock_connect(seed TSRMLS_CC)!=0) {
+        if(redis_sock_connect(seed)!=0) {
             continue;
         }
 
         // Parse out cluster nodes.  Flag mapped if we are valid
-        slots = cluster_get_slots(seed TSRMLS_CC);
+        slots = cluster_get_slots(seed);
         if(slots) mapped = !cluster_map_slots(c, slots);
 
         // Bin anything mapped, if we failed somewhere
@@ -855,7 +855,7 @@ cluster_map_keyspace(redisCluster *c TSRMLS_DC) {
     if(!mapped) {
         zend_throw_exception(redis_cluster_exception_ce,
             "Couldn't map cluster keyspace using any provided seed", 0
-            TSRMLS_CC);
+           );
         return -1;
     }
 
@@ -902,7 +902,7 @@ static int cluster_set_redirection(redisCluster* c, char *msg, int moved)
  * This function will return -1 on a critical error (e.g. parse/communication
  * error, 0 if no redirection was encountered, and 1 if the data was moved. */
 static int cluster_check_response(redisCluster *c, REDIS_REPLY_TYPE *reply_type
-                                  TSRMLS_DC)
+                                 )
 {
     size_t sz;
 
@@ -910,7 +910,7 @@ static int cluster_check_response(redisCluster *c, REDIS_REPLY_TYPE *reply_type
     CLUSTER_CLEAR_ERROR(c);
     CLUSTER_CLEAR_REPLY(c);
 
-    if(-1 == redis_check_eof(c->cmd_sock, 1 TSRMLS_CC) ||
+    if(-1 == redis_check_eof(c->cmd_sock, 1) ||
        EOF == (*reply_type = php_stream_getc(c->cmd_sock->stream)))
     {
         return -1;
@@ -944,7 +944,7 @@ static int cluster_check_response(redisCluster *c, REDIS_REPLY_TYPE *reply_type
 
     // Fetch the first line of our response from Redis.
     if(redis_sock_gets(c->cmd_sock,c->line_reply,sizeof(c->line_reply),
-                       &sz TSRMLS_CC)<0)
+                       &sz)<0)
     {
         return -1;
     }
@@ -962,11 +962,11 @@ static int cluster_check_response(redisCluster *c, REDIS_REPLY_TYPE *reply_type
 }
 
 /* Disconnect from each node we're connected to */
-PHP_REDIS_API void cluster_disconnect(redisCluster *c TSRMLS_DC) {
+PHP_REDIS_API void cluster_disconnect(redisCluster *c) {
     redisClusterNode *node;
 
     ZEND_HASH_FOREACH_PTR(c->nodes, node) {
-        redis_sock_disconnect(node->sock TSRMLS_CC);
+        redis_sock_disconnect(node->sock);
         node->sock->lazy_connect = 1;
     } ZEND_HASH_FOREACH_END();
 }
@@ -988,7 +988,7 @@ static void fyshuffle(int *array, size_t len) {
 /* This method attempts to write our command at random to the master and any
  * attached slaves, until we either successufly do so, or fail. */
 static int cluster_dist_write(redisCluster *c, const char *cmd, size_t sz,
-                              int nomaster TSRMLS_DC)
+                              int nomaster)
 {
     int i, count=1, *nodes;
     RedisSock *redis_sock;
@@ -1016,7 +1016,7 @@ static int cluster_dist_write(redisCluster *c, const char *cmd, size_t sz,
         /* If we're not on the master, attempt to send the READONLY commadn to
          * this slave, and skip it if that fails */
         if (nodes[i] == 0 || redis_sock->readonly ||
-            cluster_send_readonly(redis_sock TSRMLS_CC) == 0)
+            cluster_send_readonly(redis_sock) == 0)
         {
             /* Attempt to send the command */
             if (CLUSTER_SEND_PAYLOAD(redis_sock, cmd, sz)) {
@@ -1055,7 +1055,7 @@ static int cluster_dist_write(redisCluster *c, const char *cmd, size_t sz,
  * ASKING redirection, such that the keyspace can be updated.
 */
 static int cluster_sock_write(redisCluster *c, const char *cmd, size_t sz,
-                              int direct TSRMLS_DC)
+                              int direct)
 {
     redisClusterNode *seed_node;
     RedisSock *redis_sock;
@@ -1071,8 +1071,8 @@ static int cluster_sock_write(redisCluster *c, const char *cmd, size_t sz,
     /* If in ASK redirection, get/create the node for that host:port, otherwise
      * just use the command socket. */
     if(c->redir_type == REDIR_ASK) {
-        redis_sock = cluster_get_asking_sock(c TSRMLS_CC);
-        if(cluster_send_asking(redis_sock TSRMLS_CC)<0) {
+        redis_sock = cluster_get_asking_sock(c);
+        if(cluster_send_asking(redis_sock)<0) {
             return -1;
         }
     }
@@ -1090,8 +1090,8 @@ static int cluster_sock_write(redisCluster *c, const char *cmd, size_t sz,
         /* Try the master, then fall back to any slaves we may have */
         CLUSTER_LAZY_CONNECT(redis_sock);
         if (CLUSTER_SEND_PAYLOAD(redis_sock, cmd, sz) ||
-           !cluster_dist_write(c, cmd, sz, 1 TSRMLS_CC)) return 0;
-    } else if (!cluster_dist_write(c, cmd, sz, 0 TSRMLS_CC)) {
+           !cluster_dist_write(c, cmd, sz, 1)) return 0;
+    } else if (!cluster_dist_write(c, cmd, sz, 0)) {
         /* We were able to write to a master or slave at random */
         return 0;
     }
@@ -1142,7 +1142,7 @@ static redisClusterNode *cluster_find_node(redisCluster *c, const char *host,
 
 /* Provided a redisCluster object, the slot where we thought data was and
  * the slot where data was moved, update our node mapping */
-static void cluster_update_slot(redisCluster *c TSRMLS_DC) {
+static void cluster_update_slot(redisCluster *c) {
     redisClusterNode *node;
 
     /* Do we already have the new slot mapped */
@@ -1189,14 +1189,14 @@ static void cluster_update_slot(redisCluster *c TSRMLS_DC) {
 /* Abort any transaction in process, by sending DISCARD to any nodes that
  * have active transactions in progress.  If we can't send DISCARD, we need
  * to disconnect as it would leave us in an undefined state. */
-PHP_REDIS_API int cluster_abort_exec(redisCluster *c TSRMLS_DC) {
+PHP_REDIS_API int cluster_abort_exec(redisCluster *c) {
     clusterFoldItem *fi = c->multi_head;
 
     /* Loop through our fold items */
     while(fi) {
         if(SLOT_SOCK(c,fi->slot)->mode == MULTI) {
-            if(cluster_send_discard(c, fi->slot TSRMLS_CC)<0) {
-                cluster_disconnect(c TSRMLS_CC);
+            if(cluster_send_discard(c, fi->slot)<0) {
+                cluster_disconnect(c);
                 return -1;
             }
             SLOT_SOCK(c,fi->slot)->mode = ATOMIC;
@@ -1235,7 +1235,7 @@ PHP_REDIS_API short cluster_find_slot(redisCluster *c, const char *host,
 
 /* Send a command to a specific slot */
 PHP_REDIS_API int cluster_send_slot(redisCluster *c, short slot, char *cmd,
-                             int cmd_len, REDIS_REPLY_TYPE rtype TSRMLS_DC)
+                             int cmd_len, REDIS_REPLY_TYPE rtype)
 {
     /* Point our cluster to this slot and it's socket */
     c->cmd_slot = slot;
@@ -1244,21 +1244,21 @@ PHP_REDIS_API int cluster_send_slot(redisCluster *c, short slot, char *cmd,
     /* Enable multi mode on this slot if we've been directed to but haven't
      * send it to this node yet */
     if (c->flags->mode == MULTI && c->cmd_sock->mode != MULTI) {
-        if (cluster_send_multi(c, slot TSRMLS_CC) == -1) {
+        if (cluster_send_multi(c, slot) == -1) {
             zend_throw_exception(redis_cluster_exception_ce,
                 "Unable to enter MULTI mode on requested slot",
-                0 TSRMLS_CC);
+                0);
             return -1;
         }
     }
 
     /* Try the slot */
-    if(cluster_sock_write(c, cmd, cmd_len, 1 TSRMLS_CC)==-1) {
+    if(cluster_sock_write(c, cmd, cmd_len, 1)==-1) {
         return -1;
     }
 
     /* Check our response */
-    if(cluster_check_response(c, &c->reply_type TSRMLS_CC)!=0 ||
+    if(cluster_check_response(c, &c->reply_type)!=0 ||
        (rtype != TYPE_EOF && rtype != c->reply_type)) return -1;
 
     /* Success */
@@ -1268,7 +1268,7 @@ PHP_REDIS_API int cluster_send_slot(redisCluster *c, short slot, char *cmd,
 /* Send a command to given slot in our cluster.  If we get a MOVED or ASK error
  * we attempt to send the command to the node as directed. */
 PHP_REDIS_API short cluster_send_command(redisCluster *c, short slot, const char *cmd,
-                                  int cmd_len TSRMLS_DC)
+                                  int cmd_len)
 {
     int resp, timedout=0;
     long msstart;
@@ -1290,26 +1290,26 @@ PHP_REDIS_API short cluster_send_command(redisCluster *c, short slot, const char
         /* Send MULTI to the socket if we're in MULTI mode but haven't yet */
         if (c->flags->mode == MULTI && CMD_SOCK(c)->mode != MULTI) {
             /* We have to fail if we can't send MULTI to the node */
-            if (cluster_send_multi(c, slot TSRMLS_CC) == -1) {
+            if (cluster_send_multi(c, slot) == -1) {
                 zend_throw_exception(redis_cluster_exception_ce,
                     "Unable to enter MULTI mode on requested slot",
-                    0 TSRMLS_CC);
+                    0);
                 return -1;
             }
         }
 
         /* Attempt to deliver our command to the node, and that failing, to any
          * node until we find one that is available. */
-        if (cluster_sock_write(c, cmd, cmd_len, 0 TSRMLS_CC) == -1) {
+        if (cluster_sock_write(c, cmd, cmd_len, 0) == -1) {
             /* We have to abort, as no nodes are reachable */
             zend_throw_exception(redis_cluster_exception_ce,
                 "Can't communicate with any node in the cluster",
-                0 TSRMLS_CC);
+                0);
             return -1;
         }
 
         /* Now check the response from the node we queried. */
-        resp = cluster_check_response(c, &c->reply_type TSRMLS_CC);
+        resp = cluster_check_response(c, &c->reply_type);
 
         /* Handle MOVED or ASKING redirection */
         if (resp == 1) {
@@ -1317,12 +1317,12 @@ PHP_REDIS_API short cluster_send_command(redisCluster *c, short slot, const char
            if (c->flags->mode == MULTI) {
                zend_throw_exception(redis_cluster_exception_ce,
                    "Can't process MULTI sequence when cluster is resharding",
-                   0 TSRMLS_CC);
+                   0);
                return -1;
            }
 
            /* Update mapping if the data has MOVED */
-           if (c->redir_type == REDIR_MOVED) cluster_update_slot(c TSRMLS_CC);
+           if (c->redir_type == REDIR_MOVED) cluster_update_slot(c);
         }
 
         /* Figure out if we've timed out trying to read or write the data */
@@ -1332,11 +1332,11 @@ PHP_REDIS_API short cluster_send_command(redisCluster *c, short slot, const char
     // If we've detected the cluster is down, throw an exception
     if(c->clusterdown) {
         zend_throw_exception(redis_cluster_exception_ce,
-            "The Redis Cluster is down (CLUSTERDOWN)", 0 TSRMLS_CC);
+            "The Redis Cluster is down (CLUSTERDOWN)", 0);
         return -1;
     } else if (timedout) {
         zend_throw_exception(redis_cluster_exception_ce,
-            "Timed out attempting to find data in the correct node!", 0 TSRMLS_CC);
+            "Timed out attempting to find data in the correct node!", 0);
     }
 
     /* Clear redirection flag */
@@ -1362,7 +1362,7 @@ PHP_REDIS_API void cluster_bulk_raw_resp(INTERNAL_FUNCTION_PARAMETERS,
 
     // Make sure we can read the response
     if(c->reply_type != TYPE_BULK ||
-       (resp = redis_sock_read_bulk_reply(c->cmd_sock, c->reply_len TSRMLS_CC))==NULL)
+       (resp = redis_sock_read_bulk_reply(c->cmd_sock, c->reply_len))==NULL)
     {
         if(c->flags->mode != MULTI) {
             RETURN_FALSE;
@@ -1383,14 +1383,14 @@ PHP_REDIS_API void cluster_bulk_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster 
 
     // Make sure we can read the response
     if(c->reply_type != TYPE_BULK ||
-       (resp = redis_sock_read_bulk_reply(c->cmd_sock, c->reply_len TSRMLS_CC))==NULL)
+       (resp = redis_sock_read_bulk_reply(c->cmd_sock, c->reply_len))==NULL)
     {
         CLUSTER_RETURN_FALSE(c);
     }
 
     if (CLUSTER_IS_ATOMIC(c)) {
         if (redis_unserialize(c->flags, resp, c->reply_len, &return_value
-                              TSRMLS_CC) == 0)
+                             ) == 0)
         {
             CLUSTER_RETURN_STRING(c, resp, c->reply_len);
         } else {
@@ -1398,7 +1398,7 @@ PHP_REDIS_API void cluster_bulk_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster 
         }
     } else {
         zval *z = NULL;
-        if (redis_unserialize(c->flags, resp, c->reply_len, &z TSRMLS_CC)) {
+        if (redis_unserialize(c->flags, resp, c->reply_len, &z)) {
             efree(resp);
             add_next_index_zval(&c->multi_resp, z);
         } else {
@@ -1416,7 +1416,7 @@ PHP_REDIS_API void cluster_dbl_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *
 
     // Make sure we can read the response
     if(c->reply_type != TYPE_BULK ||
-       (resp = redis_sock_read_bulk_reply(c->cmd_sock, c->reply_len TSRMLS_CC))==NULL)
+       (resp = redis_sock_read_bulk_reply(c->cmd_sock, c->reply_len))==NULL)
     {
         CLUSTER_RETURN_FALSE(c);
     }
@@ -1600,7 +1600,7 @@ PHP_REDIS_API void cluster_sub_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *
         sctx->cb.param_count = tab_idx;
 
         // Execute our callback
-        if(zend_call_function(&(sctx->cb), &(sctx->cb_cache) TSRMLS_CC)!=
+        if(zend_call_function(&(sctx->cb), &(sctx->cb_cache))!=
                               SUCCESS)
         {
             break;
@@ -1723,7 +1723,7 @@ PHP_REDIS_API void cluster_variant_resp(INTERNAL_FUNCTION_PARAMETERS, redisClust
     int i;
 
     // Make sure we can read it
-    if((r = cluster_read_resp(c TSRMLS_CC))==NULL) {
+    if((r = cluster_read_resp(c))==NULL) {
         CLUSTER_RETURN_FALSE(c);
     }
 
@@ -1803,7 +1803,7 @@ PHP_REDIS_API void cluster_gen_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS,
         c->cmd_sock->serializer = c->flags->serializer;
 
         /* Call our specified callback */
-        if (cb(c->cmd_sock, &z_result, c->reply_len, ctx TSRMLS_CC)==FAILURE) {
+        if (cb(c->cmd_sock, &z_result, c->reply_len, ctx)==FAILURE) {
             zval_dtor(&z_result);
             efree(&z_result);
             CLUSTER_RETURN_FALSE(c);
@@ -1832,14 +1832,14 @@ PHP_REDIS_API int cluster_scan_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *
     }
 
     // Read the BULK size
-    if(cluster_check_response(c, &c->reply_type TSRMLS_CC),0 ||
+    if(cluster_check_response(c, &c->reply_type),0 ||
        c->reply_type != TYPE_BULK)
     {
         return FAILURE;
     }
 
     // Read the iterator
-    if((pit = redis_sock_read_bulk_reply(c->cmd_sock,c->reply_len TSRMLS_CC))==NULL)
+    if((pit = redis_sock_read_bulk_reply(c->cmd_sock,c->reply_len))==NULL)
     {
         return FAILURE;
     }
@@ -1849,7 +1849,7 @@ PHP_REDIS_API int cluster_scan_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *
     efree(pit);
 
     // We'll need another MULTIBULK response for the payload
-    if(cluster_check_response(c, &c->reply_type TSRMLS_CC)<0)
+    if(cluster_check_response(c, &c->reply_type)<0)
     {
         return FAILURE;
     }
@@ -1884,7 +1884,7 @@ PHP_REDIS_API void cluster_info_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster 
     char *info;
 
     // Read our bulk response
-    if((info = redis_sock_read_bulk_reply(c->cmd_sock, c->reply_len TSRMLS_CC))==NULL)
+    if((info = redis_sock_read_bulk_reply(c->cmd_sock, c->reply_len))==NULL)
     {
         CLUSTER_RETURN_FALSE(c);
     }
@@ -1910,7 +1910,7 @@ PHP_REDIS_API void cluster_client_list_resp(INTERNAL_FUNCTION_PARAMETERS, redisC
     char *info;
 
     /* Read the bulk response */
-    info = redis_sock_read_bulk_reply(c->cmd_sock, c->reply_len TSRMLS_CC);
+    info = redis_sock_read_bulk_reply(c->cmd_sock, c->reply_len);
     if (info == NULL) {
         CLUSTER_RETURN_FALSE(c);
     }
@@ -1936,7 +1936,7 @@ PHP_REDIS_API zval *cluster_zval_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS,
 
     // Pull our next response if directed
     if(pull) {
-        if(cluster_check_response(c, &c->reply_type TSRMLS_CC)<0)
+        if(cluster_check_response(c, &c->reply_type)<0)
         {
             return NULL;
         }
@@ -1950,7 +1950,7 @@ PHP_REDIS_API zval *cluster_zval_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS,
     array_init(&z_result);
 
     // Call our callback
-    if(cb(c->cmd_sock, &z_result, c->reply_len, NULL TSRMLS_CC)==FAILURE) {
+    if(cb(c->cmd_sock, &z_result, c->reply_len, NULL)==FAILURE) {
         zval_dtor(&z_result);
         efree(&z_result);
         return NULL;
@@ -1979,7 +1979,7 @@ PHP_REDIS_API void cluster_multi_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS,
             c->cmd_slot = fi->slot;
             c->cmd_sock = SLOT_SOCK(c, fi->slot);
 
-            if(cluster_check_response(c, &c->reply_type TSRMLS_CC)<0) {
+            if(cluster_check_response(c, &c->reply_type)<0) {
                 zval_dtor(&c->multi_resp);
                 efree(&c->multi_resp);
                 RETURN_FALSE;
@@ -2010,7 +2010,7 @@ PHP_REDIS_API void cluster_mbulk_mget_resp(INTERNAL_FUNCTION_PARAMETERS,
      * to consume the responses. */
     c->cmd_sock->serializer = c->flags->serializer;
     fail = c->reply_type != TYPE_MULTIBULK || c->reply_len == -1 ||
-        mbulk_resp_loop(c->cmd_sock, mctx->z_multi, c->reply_len, NULL TSRMLS_CC)==FAILURE;
+        mbulk_resp_loop(c->cmd_sock, mctx->z_multi, c->reply_len, NULL)==FAILURE;
 
     // If we had a failure, pad results with FALSE to indicate failure.  Non
     // existant keys (e.g. for MGET will come back as NULL)
@@ -2043,7 +2043,7 @@ PHP_REDIS_API void cluster_msetnx_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluste
 
     // Protect against an invalid response type
     if(c->reply_type != TYPE_INT) {
-        php_error_docref(0 TSRMLS_CC, E_WARNING,
+        php_error_docref(0, E_WARNING,
             "Invalid response type for MSETNX");
         while(real_argc--) {
             add_next_index_bool(mctx->z_multi, 0);
@@ -2078,7 +2078,7 @@ PHP_REDIS_API void cluster_del_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *
 
     // If we get an invalid reply, inform the client
     if(c->reply_type != TYPE_INT) {
-        php_error_docref(0 TSRMLS_CC, E_WARNING,
+        php_error_docref(0, E_WARNING,
             "Invalid reply type returned for DEL command");
         efree(mctx);
         return;
@@ -2108,7 +2108,7 @@ PHP_REDIS_API void cluster_mset_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster 
     // If we get an invalid reply type something very wrong has happened,
     // and we have to abort.
     if(c->reply_type != TYPE_LINE) {
-        php_error_docref(0 TSRMLS_CC, E_ERROR,
+        php_error_docref(0, E_ERROR,
             "Invalid reply type returned for MSET command");
         ZVAL_FALSE(return_value);
         efree(mctx->z_multi);
@@ -2179,7 +2179,7 @@ cluster_mbulk_assoc_resp(INTERNAL_FUNCTION_PARAMETERS, redisCluster *c,
 
 /* MULTI BULK response where we don't touch the values (e.g. KEYS) */
 int mbulk_resp_loop_raw(RedisSock *redis_sock, zval *z_result,
-                        long long count, void *ctx TSRMLS_DC)
+                        long long count, void *ctx)
 {
     char *line;
     size_t line_len;
@@ -2187,7 +2187,7 @@ int mbulk_resp_loop_raw(RedisSock *redis_sock, zval *z_result,
     // Iterate over the number we have
     while(count--) {
         // Read the line, which should never come back null
-        line = redis_sock_read(redis_sock, &line_len TSRMLS_CC);
+        line = redis_sock_read(redis_sock, &line_len);
         if(line == NULL) return FAILURE;
 
         // Add to our result array
@@ -2200,7 +2200,7 @@ int mbulk_resp_loop_raw(RedisSock *redis_sock, zval *z_result,
 
 /* MULTI BULK response where we unserialize everything */
 int mbulk_resp_loop(RedisSock *redis_sock, zval *z_result,
-                    long long count, void *ctx TSRMLS_DC)
+                    long long count, void *ctx)
 {
     char *line;
     size_t line_len;
@@ -2208,11 +2208,11 @@ int mbulk_resp_loop(RedisSock *redis_sock, zval *z_result,
     /* Iterate over the lines we have to process */
     while(count--) {
         /* Read our line */
-        line = redis_sock_read(redis_sock, &line_len TSRMLS_CC);
+        line = redis_sock_read(redis_sock, &line_len);
         
         if (line != NULL) {
             zval *z = NULL;
-            if(redis_unserialize(redis_sock, line, line_len, &z TSRMLS_CC)==1) {
+            if(redis_unserialize(redis_sock, line, line_len, &z)==1) {
                 add_next_index_zval(z_result, z);
                 efree(line);
             } else {
@@ -2229,7 +2229,7 @@ int mbulk_resp_loop(RedisSock *redis_sock, zval *z_result,
 
 /* MULTI BULK response where we turn key1,value1 into key1=>value1 */
 int mbulk_resp_loop_zipstr(RedisSock *redis_sock, zval *z_result,
-                           long long count, void *ctx TSRMLS_DC)
+                           long long count, void *ctx)
 {
     char *line, *key;
     size_t line_len;
@@ -2244,7 +2244,7 @@ int mbulk_resp_loop_zipstr(RedisSock *redis_sock, zval *z_result,
     // Iterate through our elements
     while(count--) {
         // Grab our line, bomb out on failure
-        line = redis_sock_read(redis_sock, &line_len TSRMLS_CC);
+        line = redis_sock_read(redis_sock, &line_len);
         if(!line) return -1;
 
         if(idx++ % 2 == 0) {
@@ -2254,7 +2254,7 @@ int mbulk_resp_loop_zipstr(RedisSock *redis_sock, zval *z_result,
         } else {
             /* Attempt serialization */
             zval *z = NULL;
-            if(redis_unserialize(redis_sock, line, line_len, &z TSRMLS_CC)==1) {
+            if(redis_unserialize(redis_sock, line, line_len, &z)==1) {
                 add_assoc_zval(z_result, key, z);
                 efree(line);
             } else {
@@ -2270,7 +2270,7 @@ int mbulk_resp_loop_zipstr(RedisSock *redis_sock, zval *z_result,
 
 /* MULTI BULK loop processor where we expect key,score key, score */
 int mbulk_resp_loop_zipdbl(RedisSock *redis_sock, zval *z_result,
-                           long long count, void *ctx TSRMLS_DC)
+                           long long count, void *ctx)
 {
     char *line, *key;
     size_t line_len;
@@ -2284,14 +2284,14 @@ int mbulk_resp_loop_zipdbl(RedisSock *redis_sock, zval *z_result,
 
     // While we have elements
     while(count--) {
-        line = redis_sock_read(redis_sock, &line_len TSRMLS_CC);
+        line = redis_sock_read(redis_sock, &line_len);
         if (line != NULL) {
             if(idx++ % 2 == 0) {
                 key = line;
                 key_len = line_len;
             } else {
                 zval *z = NULL;
-                if (redis_unserialize(redis_sock,key,key_len, &z TSRMLS_CC)) {
+                if (redis_unserialize(redis_sock,key,key_len, &z)) {
                     convert_to_string(z);
                     add_assoc_double_ex(z_result, Z_STRVAL_P(z), 1+Z_STRLEN_P(z), atof(line));
                     zval_dtor(z);
@@ -2312,7 +2312,7 @@ int mbulk_resp_loop_zipdbl(RedisSock *redis_sock, zval *z_result,
 
 /* MULTI BULK where we're passed the keys, and we attach vals */
 int mbulk_resp_loop_assoc(RedisSock *redis_sock, zval *z_result,
-                          long long count, void *ctx TSRMLS_DC)
+                          long long count, void *ctx)
 {
     char *line;
     size_t line_len;
@@ -2321,11 +2321,11 @@ int mbulk_resp_loop_assoc(RedisSock *redis_sock, zval *z_result,
 
     // Loop while we've got replies
     while(count--) {
-        line = redis_sock_read(redis_sock, &line_len TSRMLS_CC);
+        line = redis_sock_read(redis_sock, &line_len);
 
         if(line != NULL) {
             zval *z = NULL;
-            if(redis_unserialize(redis_sock, line, line_len, &z TSRMLS_CC)==1) {
+            if(redis_unserialize(redis_sock, line, line_len, &z)==1) {
                 efree(line);
                 add_assoc_zval_ex(z_result,Z_STRVAL_P(z_keys[i]),
                     1+Z_STRLEN_P(z_keys[i]), z);

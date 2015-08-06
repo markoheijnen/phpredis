@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "common.h"
 
-void redis_destructor_redis_array(zend_resource * rsrc TSRMLS_DC);
+void redis_destructor_redis_array(zend_resource * rsrc);
 
 PHP_METHOD(RedisArray, __construct);
 PHP_METHOD(RedisArray, __call);

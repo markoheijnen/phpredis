@@ -42,7 +42,7 @@ int redis_str_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock, char *kw,
     size_t arg_len;
 
     // Parse args
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &arg, &arg_len)
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "s", &arg, &arg_len)
             ==FAILURE)
     {
         return FAILURE;
@@ -66,14 +66,14 @@ int redis_key_long_val_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     long long expire;
     zval *z_val;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "slz", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "slz", &key, &key_len,
                 &expire, &z_val)==FAILURE)
     {
         return FAILURE;
     }
 
     // Serialize value, prefix key
-    val_free = redis_serialize(redis_sock, z_val, &val TSRMLS_CC);
+    val_free = redis_serialize(redis_sock, z_val, &val);
     key_free = redis_key_prefix(redis_sock, &key, &key_len);
 
     // Construct our command
@@ -99,7 +99,7 @@ int redis_key_long_str_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     size_t key_len, val_len;
     long long lval;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sls", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sls", &key, &key_len,
                 &lval, &val, &val_len)==FAILURE)
     {
         return FAILURE;
@@ -132,13 +132,13 @@ int redis_kv_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     size_t key_len;
     zval *z_val;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sz", &key, &key_len,
                 &z_val)==FAILURE)
     {
         return FAILURE;
     }
 
-    val_free = redis_serialize(redis_sock, z_val, &val TSRMLS_CC);
+    val_free = redis_serialize(redis_sock, z_val, &val);
     key_free = redis_key_prefix(redis_sock, &key, &key_len);
 
     // Construct our command
@@ -163,7 +163,7 @@ int redis_key_str_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     int key_free;
     size_t key_len, val_len;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "ss", &key, &key_len,
                 &val, &val_len)==FAILURE)
     {
         return FAILURE;
@@ -191,7 +191,7 @@ int redis_key_str_str_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     int key_free;
     size_t key_len, val1_len, val2_len;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sss", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sss", &key, &key_len,
                 &val1, &val1_len, &val2, &val2_len)==FAILURE)
     {
         return FAILURE;
@@ -223,7 +223,7 @@ int redis_key_key_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     size_t key1_len, key2_len;
     int key1_free, key2_free;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &key1, &key1_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "ss", &key1, &key1_len,
                 &key2, &key2_len)==FAILURE)
     {
         return FAILURE;
@@ -241,7 +241,7 @@ int redis_key_key_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
         // Check if Redis would give us a CROSSLOT error
         if(slot1 != slot2) {
-            php_error_docref(NULL TSRMLS_CC, E_WARNING,
+            php_error_docref(NULL, E_WARNING,
                     "Keys don't hash to the same slot");
             if(key1_free) efree(key1);
             if(key2_free) efree(key2);
@@ -269,7 +269,7 @@ int redis_key_long_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     long long lval;
     size_t key_len;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sl", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sl", &key, &key_len,
                 &lval)==FAILURE)
     {
         return FAILURE;
@@ -304,7 +304,7 @@ int redis_key_long_long_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     size_t key_len;
     long long val1, val2;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sll", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sll", &key, &key_len,
                 &val1, &val2)==FAILURE)
     {
         return FAILURE;
@@ -334,7 +334,7 @@ int redis_key_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     size_t key_len;
     int key_free;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len)
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "s", &key, &key_len)
             ==FAILURE)
     {
         return FAILURE;
@@ -364,7 +364,7 @@ int redis_key_dbl_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     int key_free;
     double val;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sd", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sd", &key, &key_len,
                 &val)==FAILURE)
     {
         return FAILURE;
@@ -432,7 +432,7 @@ int redis_zrange_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     long start, end;
     zend_bool ws=0;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sll|b", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sll|b", &key, &key_len,
                 &start, &end, &ws)==FAILURE)
     {
         return FAILURE;
@@ -470,7 +470,7 @@ int redis_zrangebyscore_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     zval *z_opt=NULL, *z_ele;
     HashTable *ht_opt;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sss|a", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sss|a", &key, &key_len,
                 &start, &start_len, &end, &end_len, &z_opt)
             ==FAILURE)
     {
@@ -544,7 +544,7 @@ int redis_zinter_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     int argc = 2, agg_op_len=0, keys_count;
 
     // Parse args
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sa|a!s", &key,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sa|a!s", &key,
                 &key_len, &z_keys, &z_weights, &agg_op,
                 &agg_op_len)==FAILURE)
     {
@@ -565,7 +565,7 @@ int redis_zinter_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     if(z_weights != NULL) {
         ht_weights = Z_ARRVAL_P(z_weights);
         if(zend_hash_num_elements(ht_weights) != keys_count) {
-            php_error_docref(NULL TSRMLS_CC, E_WARNING,
+            php_error_docref(NULL, E_WARNING,
                     "WEIGHTS and keys array should be the same size!");
             return FAILURE;
         }
@@ -580,7 +580,7 @@ int redis_zinter_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                 strncasecmp(agg_op, "MIN", sizeof("MIN")) &&
                 strncasecmp(agg_op, "MAX", sizeof("MAX")))
         {
-            php_error_docref(NULL TSRMLS_CC, E_WARNING,
+            php_error_docref(NULL, E_WARNING,
                     "Invalid AGGREGATE option provided!");
             return FAILURE;
         }
@@ -623,7 +623,7 @@ int redis_zinter_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
         // If we're in Cluster mode, verify the slot is the same
         if(slot && *slot != cluster_hash_key(key,key_len)) {
-            php_error_docref(NULL TSRMLS_CC, E_WARNING,
+            php_error_docref(NULL, E_WARNING,
                     "All keys don't hash to the same slot!");
             zend_string_release(cmdstr.s);
             if(key_free) efree(key);
@@ -656,7 +656,7 @@ int redis_zinter_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                     strncasecmp(Z_STRVAL_P(z_ele),"-inf",sizeof("-inf"))!=0 &&
                     strncasecmp(Z_STRVAL_P(z_ele),"+inf",sizeof("+inf"))!=0)
             {
-                php_error_docref(NULL TSRMLS_CC, E_WARNING,
+                php_error_docref(NULL, E_WARNING,
                         "Weights must be numeric or '-inf','inf','+inf'");
                 zend_string_release(cmdstr.s);
                 return FAILURE;
@@ -702,7 +702,7 @@ int redis_subscribe_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     int key_len, key_free;
     char *key;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "af", &z_arr,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "af", &z_arr,
                 &(sctx->cb), &(sctx->cb_cache))==FAILURE)
     {
         efree(sctx);
@@ -760,7 +760,7 @@ int redis_unsubscribe_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     smart_str cmdstr = {0};
     subscribeContext *sctx = emalloc(sizeof(subscribeContext));
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &z_arr)==FAILURE) {
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "a", &z_arr)==FAILURE) {
         efree(sctx);
         return FAILURE;
     }
@@ -804,12 +804,12 @@ int redis_zrangebylex_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
     /* We need either 3 or 5 arguments for this to be valid */
     if(argc != 3 && argc != 5) {
-        php_error_docref(0 TSRMLS_CC, E_WARNING,
+        php_error_docref(0, E_WARNING,
                 "Must pass either 3 or 5 arguments");
         return FAILURE;
     }
 
-    if(zend_parse_parameters(argc TSRMLS_CC, "sss|ll", &key,
+    if(zend_parse_parameters(argc, "sss|ll", &key,
                 &key_len, &min, &min_len, &max, &max_len,
                 &offset, &count)==FAILURE)
     {
@@ -820,7 +820,7 @@ int redis_zrangebylex_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     if(min_len < 1 || max_len < 1 || (min[0] != '(' && min[0] != '[') ||
             (max[0] != '(' && max[0] != '['))
     {
-        php_error_docref(0 TSRMLS_CC, E_WARNING,
+        php_error_docref(0, E_WARNING,
                 "min and max arguments must start with '[' or '('");
         return FAILURE;
     }
@@ -855,7 +855,7 @@ int redis_gen_zlex_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     int key_len, min_len, max_len, key_free;
 
     /* Parse args */
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sss", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sss", &key, &key_len,
                 &min, &min_len, &max, &max_len)==FAILURE)
     {
         return FAILURE;
@@ -865,7 +865,7 @@ int redis_gen_zlex_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     if(min_len<1 || max_len<1 || (min[0]!='(' && min[0]!='[') ||
             (max[0]!='(' && max[0]!='['))
     {
-        php_error_docref(NULL TSRMLS_CC, E_WARNING,
+        php_error_docref(NULL, E_WARNING,
                 "Min and Max arguments must begin with '(' or '['");
         return FAILURE;
     }
@@ -929,7 +929,7 @@ int redis_key_varval_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
     // Add our members
     for(i=1;i<argc;i++) {
-        arg_free = redis_serialize(redis_sock, &z_args[i], &arg TSRMLS_CC);
+        arg_free = redis_serialize(redis_sock, &z_args[i], &arg);
         redis_cmd_append_sstr(&cmdstr, arg->val, arg->len);
         if(arg_free) zend_string_free(arg);
     }
@@ -962,7 +962,7 @@ static int gen_varkey_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     short kslot = -1;
 
     if(argc < min_argc) {
-        zend_wrong_param_count(TSRMLS_C);
+        zend_wrong_param_count();
         return FAILURE;
     }
 
@@ -1009,7 +1009,7 @@ static int gen_varkey_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                 if(kslot == -1) {
                     kslot = cluster_hash_key(key, key_len);
                 } else if(cluster_hash_key(key,key_len)!=kslot) {
-                    php_error_docref(NULL TSRMLS_CC, E_WARNING,
+                    php_error_docref(NULL, E_WARNING,
                             "Not all keys hash to the same slot!");
                     return FAILURE;
                 }
@@ -1025,7 +1025,7 @@ static int gen_varkey_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
         }
     } else {
         if(has_timeout && Z_TYPE(z_args[argc-1])!=IS_LONG) {
-            php_error_docref(NULL TSRMLS_CC, E_ERROR,
+            php_error_docref(NULL, E_ERROR,
                     "Timeout value must be a LONG");
             efree(z_args);
             return FAILURE;
@@ -1044,7 +1044,7 @@ static int gen_varkey_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                 if( kslot == -1) {
                     kslot = cluster_hash_key(key, key_len);
                 } else if(cluster_hash_key(key,key_len)!=kslot) {
-                    php_error_docref(NULL TSRMLS_CC, E_WARNING,
+                    php_error_docref(NULL, E_WARNING,
                         "Not all keys hash to the same slot");
                     efree(z_args);
                     return FAILURE;
@@ -1088,7 +1088,7 @@ int redis_set_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     long expire = -1;
 
     // Make sure the function is being called correctly
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|z", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sz|z", &key, &key_len,
                 &z_value, &z_opts)==FAILURE)
     {
         return FAILURE;
@@ -1103,7 +1103,7 @@ int redis_set_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     }
 
     // Serialize and key prefix if required
-    val_free = redis_serialize(redis_sock, z_value, &val TSRMLS_CC);
+    val_free = redis_serialize(redis_sock, z_value, &val);
     key_free = redis_key_prefix(redis_sock, &key, &key_len);
 
     // Check for an options array
@@ -1172,7 +1172,7 @@ int redis_brpoplpush_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     short slot1, slot2;
     long timeout;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl", &key1, &key1_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "ssl", &key1, &key1_len,
                 &key2, &key2_len, &timeout)==FAILURE)
     {
         return FAILURE;
@@ -1187,7 +1187,7 @@ int redis_brpoplpush_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
         slot1 = cluster_hash_key(key1, key1_len);
         slot2 = cluster_hash_key(key2, key2_len);
         if(slot1 != slot2) {
-            php_error_docref(NULL TSRMLS_CC, E_WARNING,
+            php_error_docref(NULL, E_WARNING,
                     "Keys hash to different slots!");
             if(key1_free) efree(key1);
             if(key2_free) efree(key2);
@@ -1227,7 +1227,7 @@ redis_atomic_increment(INTERNAL_FUNCTION_PARAMETERS, int type,
     size_t key_len;
     long val = 1;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &key, &key_len,
+    if (zend_parse_parameters(ZEND_NUM_ARGS(), "s|l", &key, &key_len,
                               &val)==FAILURE)
     {
         return FAILURE;
@@ -1286,7 +1286,7 @@ int redis_hincrby_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     int key_len, mem_len, key_free;
     long byval;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "ssl", &key, &key_len,
                 &mem, &mem_len, &byval)==FAILURE)
     {
         return FAILURE;
@@ -1316,7 +1316,7 @@ int redis_hincrbyfloat_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     int key_len, mem_len, key_free;
     double byval;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssd", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "ssd", &key, &key_len,
                 &mem, &mem_len, &byval)==FAILURE)
     {
         return FAILURE;
@@ -1350,7 +1350,7 @@ int redis_hmget_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     smart_str cmdstr = {0};
 
     // Parse arguments
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sa", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sa", &key, &key_len,
                 &z_arr)==FAILURE)
     {
         return FAILURE;
@@ -1438,7 +1438,7 @@ int redis_hmset_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     zval *z_val;
 
     // Parse args
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sa", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sa", &key, &key_len,
                 &z_arr)==FAILURE)
     {
         return FAILURE;
@@ -1475,7 +1475,7 @@ int redis_hmset_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
         }
 
         // Serialize value (if directed)
-        val_free = redis_serialize(redis_sock, z_val, &val TSRMLS_CC);
+        val_free = redis_serialize(redis_sock, z_val, &val);
 
         // Append the key and value to our command
         redis_cmd_append_sstr(&cmdstr, mem->val, mem->len);
@@ -1505,7 +1505,7 @@ int redis_bitpos_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     long bit, start, end;
 
     argc = ZEND_NUM_ARGS();
-    if(zend_parse_parameters(argc TSRMLS_CC, "sl|ll", &key, &key_len, &bit,
+    if(zend_parse_parameters(argc, "sl|ll", &key, &key_len, &bit,
                 &start, &end)==FAILURE)
     {
         return FAILURE;
@@ -1581,7 +1581,7 @@ int redis_bitop_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
         if(slot) {
             kslot = cluster_hash_key(key, key_len);
             if(*slot == -1 || kslot != *slot) {
-                php_error_docref(NULL TSRMLS_CC, E_WARNING,
+                php_error_docref(NULL, E_WARNING,
                         "Warning, not all keys hash to the same slot!");
                 if(key_free) efree(key);
                 return FAILURE;
@@ -1610,7 +1610,7 @@ int redis_bitcount_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     int key_len, key_free;
     long start = 0, end = -1;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|ll", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "s|ll", &key, &key_len,
                 &start, &end)==FAILURE)
     {
         return FAILURE;
@@ -1647,7 +1647,7 @@ static int redis_gen_pf_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     int tmp_mem_len;
 
     // Parse arguments
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sa", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sa", &key, &key_len,
                 &z_arr)==FAILURE)
     {
         return FAILURE;
@@ -1694,7 +1694,7 @@ static int redis_gen_pf_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
             // Verify slot
             if(slot && *slot != cluster_hash_key(tmp_mem, tmp_mem_len)) {
-                php_error_docref(0 TSRMLS_CC, E_WARNING,
+                php_error_docref(0, E_WARNING,
                         "All keys must hash to the same slot!");
                 if(key_free) efree(key);
                 if(&z_tmp) {
@@ -1703,7 +1703,7 @@ static int redis_gen_pf_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                 return FAILURE;
             }
         } else {
-            mem_free = redis_serialize(redis_sock, z_ele, &mem TSRMLS_CC);
+            mem_free = redis_serialize(redis_sock, z_ele, &mem);
             if(!mem_free) {
                 if(Z_TYPE_P(z_ele)!=IS_STRING) {
                     ZVAL_COPY(&z_tmp, z_ele);
@@ -1772,7 +1772,7 @@ int redis_pfcount_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     char *key;
     short kslot=-1;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,"z",&z_keys)==FAILURE) {
+    if(zend_parse_parameters(ZEND_NUM_ARGS(),"z",&z_keys)==FAILURE) {
         return FAILURE;
     }
 
@@ -1822,7 +1822,7 @@ int redis_pfcount_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                     }
                     zend_string_release(cmdstr.s);
                     
-                    php_error_docref(NULL TSRMLS_CC, E_WARNING,
+                    php_error_docref(NULL, E_WARNING,
                         "Not all keys hash to the same slot!");
                     return FAILURE;
                 }
@@ -1876,7 +1876,7 @@ int redis_auth_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     char *pw;
     int pw_len;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &pw, &pw_len)
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "s", &pw, &pw_len)
             ==FAILURE)
     {
         return FAILURE;
@@ -1903,7 +1903,7 @@ int redis_setbit_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     long long offset;
     zend_bool val;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "slb", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "slb", &key, &key_len,
                 &offset, &val)==FAILURE)
     {
         return FAILURE;
@@ -1911,7 +1911,7 @@ int redis_setbit_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
     // Validate our offset
     if(offset < BITOP_MIN_OFFSET || offset > BITOP_MAX_OFFSET) {
-        php_error_docref(0 TSRMLS_CC, E_WARNING,
+        php_error_docref(0, E_WARNING,
                 "Invalid OFFSET for bitop command (must be between 0-2^32-1)");
         return FAILURE;
     }
@@ -1937,7 +1937,7 @@ int redis_linsert_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     zval *z_val, *z_pivot;
     zend_string *val, *pivot;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sszz", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sszz", &key, &key_len,
                 &pos, &pos_len, &z_pivot, &z_val)==FAILURE)
     {
         return FAILURE;
@@ -1945,15 +1945,15 @@ int redis_linsert_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
     // Validate position
     if(strncasecmp(pos, "after", 5) && strncasecmp(pos, "before", 6)) {
-        php_error_docref(NULL TSRMLS_CC, E_WARNING,
+        php_error_docref(NULL, E_WARNING,
                 "Position must be either 'BEFORE' or 'AFTER'");
         return FAILURE;
     }
 
     // Prefix key, serialize value and position
     key_free = redis_key_prefix(redis_sock, &key, &key_len);
-    val_free = redis_serialize(redis_sock, z_val, &val TSRMLS_CC);
-    pivot_free = redis_serialize(redis_sock, z_pivot, &pivot TSRMLS_CC);
+    val_free = redis_serialize(redis_sock, z_val, &val);
+    pivot_free = redis_serialize(redis_sock, z_pivot, &pivot);
 
     // Construct command
     *cmd_len = redis_cmd_format_static(cmd, "LINSERT", "ssss", key, key_len,
@@ -1982,7 +1982,7 @@ int redis_lrem_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     zval *z_val;
     zend_string *val;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz|l", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sz|l", &key, &key_len,
                 &z_val, &count)==FAILURE)
     {
         return FAILURE;
@@ -1990,7 +1990,7 @@ int redis_lrem_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
     // Prefix key, serialize value
     key_free = redis_key_prefix(redis_sock, &key, &key_len);
-    val_free = redis_serialize(redis_sock, z_val, &val TSRMLS_CC);
+    val_free = redis_serialize(redis_sock, z_val, &val);
 
     // Construct command
     *cmd_len = redis_cmd_format_static(cmd, "LREM", "sds", key, key_len, count,
@@ -2016,13 +2016,13 @@ int redis_smove_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     zval *z_val;
     zend_string *val;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssz", &src, &src_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "ssz", &src, &src_len,
                 &dst, &dst_len, &z_val)==FAILURE)
     {
         return FAILURE;
     }
 
-    val_free = redis_serialize(redis_sock, z_val, &val TSRMLS_CC);
+    val_free = redis_serialize(redis_sock, z_val, &val);
     src_free = redis_key_prefix(redis_sock, &src, &src_len);
     dst_free = redis_key_prefix(redis_sock, &dst, &dst_len);
 
@@ -2031,7 +2031,7 @@ int redis_smove_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
         short slot1 = cluster_hash_key(src, src_len);
         short slot2 = cluster_hash_key(dst, dst_len);
         if(slot1 != slot2) {
-            php_error_docref(0 TSRMLS_CC, E_WARNING,
+            php_error_docref(0, E_WARNING,
                     "Source and destination keys don't hash to the same slot!");
             if(val_free) zend_string_free(val);
             if(src_free) efree(src);
@@ -2064,14 +2064,14 @@ static int gen_hset_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     zval *z_val;
     zend_string *val;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssz", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "ssz", &key, &key_len,
                 &mem, &mem_len, &z_val)==FAILURE)
     {
         return FAILURE;
     }
 
     // Prefix/serialize
-    val_free = redis_serialize(redis_sock, z_val, &val TSRMLS_CC);
+    val_free = redis_serialize(redis_sock, z_val, &val);
     key_free = redis_key_prefix(redis_sock, &key, &key_len);
 
     // Construct command
@@ -2115,7 +2115,7 @@ int redis_srandmember_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     size_t key_len;
     long long count;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "s|l", &key, &key_len,
                 &count)==FAILURE)
     {
         return FAILURE;
@@ -2156,7 +2156,7 @@ int redis_zincrby_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     zval *z_val;
     zend_string *mem;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sdz", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "sdz", &key, &key_len,
                 &incrby, &z_val)==FAILURE)
     {
         return FAILURE;
@@ -2164,7 +2164,7 @@ int redis_zincrby_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
     // Prefix key, serialize
     key_free = redis_key_prefix(redis_sock, &key, &key_len);
-    mem_free = redis_serialize(redis_sock, z_val, &mem TSRMLS_CC);
+    mem_free = redis_serialize(redis_sock, z_val, &mem);
 
     *cmd_len = redis_cmd_format_static(cmd, "ZINCRBY", "sfs", key, key_len,
             incrby, mem->val, mem->len);
@@ -2191,7 +2191,7 @@ int redis_sort_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 	long low, high;
 	HashTable *ht_argv;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|a", &key, &key_len,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "s|a", &key, &key_len,
                 &z_opts)==FAILURE)
     {
         return FAILURE;
@@ -2234,7 +2234,7 @@ int redis_sort_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
             Z_TYPE_P(z_ele)==IS_STRING) {
         // "BY" option is disabled in cluster
         if(slot) {
-            php_error_docref(NULL TSRMLS_CC, E_WARNING,
+            php_error_docref(NULL, E_WARNING,
                     "SORT BY option is not allowed in Redis Cluster");
             if(key_free) efree(key);
             zval_dtor(&z_argv);
@@ -2264,7 +2264,7 @@ int redis_sort_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                 Z_STRVAL_P(z_ele),Z_STRLEN_P(z_ele));
 
         if(cross_slot) {
-            php_error_docref(0 TSRMLS_CC, E_WARNING,
+            php_error_docref(0, E_WARNING,
                     "Error, SORT key and STORE key have different slots!");
             if(key_free) efree(key);
             zval_dtor(&z_argv);
@@ -2287,7 +2287,7 @@ int redis_sort_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
         // Disabled in cluster
         if(slot) {
-            php_error_docref(NULL TSRMLS_CC, E_WARNING,
+            php_error_docref(NULL, E_WARNING,
                     "GET option for SORT disabled in Redis Cluster");
             if(key_free) efree(key);
             zval_dtor(&z_argv);
@@ -2322,7 +2322,7 @@ int redis_sort_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
             // Make sure we were able to add at least one
             if(added==0) {
-                php_error_docref(NULL TSRMLS_CC, E_WARNING,
+                php_error_docref(NULL, E_WARNING,
                         "Array of GET values requested, but none are valid");
                 if(key_free) efree(key);
                 zval_dtor(&z_argv);
@@ -2353,7 +2353,7 @@ int redis_sort_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
             if((Z_TYPE_P(z_off)!=IS_STRING && Z_TYPE_P(z_off)!=IS_LONG) ||
                     (Z_TYPE_P(z_cnt)!=IS_STRING && Z_TYPE_P(z_cnt)!=IS_LONG))
             {
-                php_error_docref(NULL TSRMLS_CC, E_WARNING,
+                php_error_docref(NULL, E_WARNING,
                         "LIMIT options on SORT command must be longs or strings");
                 if(key_free) efree(key);
                 zval_dtor(&z_argv);
@@ -2508,7 +2508,7 @@ int redis_zadd_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     for(i=1;i<argc;i+=2) {
         // Convert score to a double, serialize value if requested
         convert_to_double(&z_args[i]);
-        val_free = redis_serialize(redis_sock, &z_args[i+1], &val TSRMLS_CC);
+        val_free = redis_serialize(redis_sock, &z_args[i+1], &val);
 
         // Append score and member
         redis_cmd_append_sstr_dbl(&cmdstr, Z_DVAL(z_args[i]));
@@ -2536,7 +2536,7 @@ int redis_object_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     char *key, *subcmd;
     int key_len, key_free, subcmd_len;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &subcmd,
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "ss", &subcmd,
                 &subcmd_len, &key, &key_len)==FAILURE)
     {
         return FAILURE;
@@ -2561,7 +2561,7 @@ int redis_object_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     } else if(subcmd_len == 8 && !strncasecmp(subcmd, "encoding", 8)) {
         *rtype = TYPE_BULK;
     } else {
-        php_error_docref(NULL TSRMLS_CC, E_WARNING,
+        php_error_docref(NULL, E_WARNING,
                 "Invalid subcommand sent to OBJECT");
         efree(*cmd);
         return FAILURE;
@@ -2664,7 +2664,7 @@ int redis_rawcommand_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 	smart_str cmdstr = {0};
 
     /* Parse our args */
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|sz", &kw, &kw_len, 
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "|sz", &kw, &kw_len, 
                 &z_arg)==FAILURE) 
     {
         return FAILURE;
@@ -2728,7 +2728,7 @@ void redis_getoption_handler(INTERNAL_FUNCTION_PARAMETERS,
 {
     long option;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &option)
+    if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &option)
             == FAILURE)
     {
         RETURN_FALSE;
@@ -2762,7 +2762,7 @@ void redis_setoption_handler(INTERNAL_FUNCTION_PARAMETERS,
     int val_len;
     struct timeval read_tv;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ls", &option,
+    if (zend_parse_parameters(ZEND_NUM_ARGS(), "ls", &option,
                 &val_str, &val_len) == FAILURE)
     {
         RETURN_FALSE;
@@ -2835,7 +2835,7 @@ void redis_prefix_handler(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock) {
     char *key;
     int key_len;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len)
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "s", &key, &key_len)
             ==FAILURE)
     {
         RETURN_FALSE;
@@ -2856,11 +2856,11 @@ void redis_serialize_handler(INTERNAL_FUNCTION_PARAMETERS,
     zend_string *val;
 	int val_free;
 
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &z_val)==FAILURE) {
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "z", &z_val)==FAILURE) {
         RETURN_FALSE;
     }
 
-    val_free = redis_serialize(redis_sock, z_val, &val TSRMLS_CC);
+    val_free = redis_serialize(redis_sock, z_val, &val);
 
     RETVAL_STRINGL(val->val, val->len);
     if(val_free) zend_string_free(val);
@@ -2873,7 +2873,7 @@ void redis_unserialize_handler(INTERNAL_FUNCTION_PARAMETERS,
     int value_len;
 
     // Parse our arguments
-    if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &value, &value_len)
+    if(zend_parse_parameters(ZEND_NUM_ARGS(), "s", &value, &value_len)
             == FAILURE)
     {
         RETURN_FALSE;
@@ -2883,12 +2883,12 @@ void redis_unserialize_handler(INTERNAL_FUNCTION_PARAMETERS,
     if(redis_sock->serializer != REDIS_SERIALIZER_NONE) {
         zval *z_ret = NULL;
         if(redis_unserialize(redis_sock, value, value_len, &z_ret
-                    TSRMLS_CC) == 0)
+                   ) == 0)
         {
             // Badly formed input, throw an execption
             zend_throw_exception(ex,
                     "Invalid serialized data, or unserialization error",
-                    0 TSRMLS_CC);
+                    0);
             RETURN_FALSE;
         }
         RETURN_ZVAL(z_ret, 0, 1);
