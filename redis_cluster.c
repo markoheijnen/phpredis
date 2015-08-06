@@ -2860,4 +2860,4 @@ PHP_METHOD(RedisCluster, rawcommand) {
 }
 /* }}} */
 
-/* vim: set tabstop=4 softtabstops=4 noexpandtab shiftwidth=4: */
+/* vim: set tabstop=4 softtabstop=4 noexpandtab shiftwidth=4: */
