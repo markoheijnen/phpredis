@@ -31,10 +31,6 @@
 #define SCORE_DECODE_DOUBLE 2
 
 #ifdef PHP_WIN32
-    # if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION <= 4
-        /* This proto is available from 5.5 on only */
-        PHPAPI int usleep(unsigned int useconds);
-    # endif
 	#include "win32/time.h"
 #endif
 
@@ -1965,11 +1961,7 @@ PHP_REDIS_API int
 redis_serialize(RedisSock *redis_sock, zval *z, zend_string **val
                 TSRMLS_DC) 
 {
-#if ZEND_MODULE_API_NO >= 20100000
     php_serialize_data_t ht;
-#else
-    HashTable ht;
-#endif
     smart_str sstr = {0};
     zval z_copy;
 #ifdef HAVE_REDIS_IGBINARY
@@ -2004,19 +1996,11 @@ redis_serialize(RedisSock *redis_sock, zval *z, zend_string **val
 
         case REDIS_SERIALIZER_PHP:
 
-#if ZEND_MODULE_API_NO >= 20100000
             PHP_VAR_SERIALIZE_INIT(ht);
-#else
-            zend_hash_init(&ht, 10, NULL, NULL, 0);
-#endif
             php_var_serialize(&sstr, z, &ht TSRMLS_CC);
             //*val = STR_DUP(sstr.s, 0);
 			*val = zend_string_init(sstr.s,(*val)->len, 0);
-#if ZEND_MODULE_API_NO >= 20100000
             PHP_VAR_SERIALIZE_DESTROY(ht);
-#else
-            zend_hash_destroy(&ht);
-#endif
 
             return 1;
 
@@ -2049,22 +2033,14 @@ redis_unserialize(RedisSock* redis_sock, const char *val, int val_len,
             if(!*return_value) {
                 *return_value = &tmp_value;
             }
-#if ZEND_MODULE_API_NO >= 20100000
             PHP_VAR_UNSERIALIZE_INIT(var_hash);
-#else
-            memset(&var_hash, 0, sizeof(var_hash));
-#endif
             if(!php_var_unserialize(*return_value, (const unsigned char**)&val,
                     (const unsigned char*)val + val_len, &var_hash TSRMLS_CC)) {
                 ret = 0;
             } else {
                 ret = 1;
             }
-#if ZEND_MODULE_API_NO >= 20100000
             PHP_VAR_UNSERIALIZE_DESTROY(var_hash);
-#else
-            var_destroy(&var_hash);
-#endif
 
             return ret;
 

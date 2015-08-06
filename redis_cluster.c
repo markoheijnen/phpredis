@@ -248,11 +248,7 @@ PHP_REDIS_API zend_class_entry *rediscluster_get_exception_base(int root TSRMLS_
         }
     }
 #endif
-#if (PHP_MAJOR_VERSION == 5) && (PHP_MINOR_VERSION < 2)
-    return zend_exception_get_default();
-#else
     return zend_exception_get_default(TSRMLS_C);
-#endif
 }
 
 /* Create redisCluster context */

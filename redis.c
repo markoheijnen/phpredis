@@ -337,9 +337,7 @@ static zend_function_entry redis_functions[] = {
 };
 
 zend_module_entry redis_module_entry = {
-#if ZEND_MODULE_API_NO >= 20010901
     STANDARD_MODULE_HEADER,
-#endif
     "redis",
     NULL,
     PHP_MINIT(redis),
@@ -347,9 +345,7 @@ zend_module_entry redis_module_entry = {
     PHP_RINIT(redis),
     PHP_RSHUTDOWN(redis),
     PHP_MINFO(redis),
-#if ZEND_MODULE_API_NO >= 20010901
     PHP_REDIS_VERSION,
-#endif
     STANDARD_MODULE_PROPERTIES
 };
 
@@ -374,11 +370,7 @@ PHP_REDIS_API zend_class_entry *redis_get_exception_base(int root TSRMLS_DC)
         }
     }
 #endif
-#if (PHP_MAJOR_VERSION == 5) && (PHP_MINOR_VERSION < 2)
-    return zend_exception_get_default();
-#else
     return zend_exception_get_default(TSRMLS_C);
-#endif
 }
 
 /* Send a static DISCARD in case we're in MULTI mode. */
