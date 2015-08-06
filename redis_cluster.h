@@ -107,8 +107,7 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
 PHP_REDIS_API zend_class_entry *rediscluster_get_exception_base(int root);
 
 /* Create cluster context */
-zend_object *  create_cluster_context(zend_class_entry *class_type
-                                        );
+zend_object *  create_cluster_context(zend_class_entry *class_type);
 
 /* Free cluster context struct */
 void free_cluster_context(void *object);

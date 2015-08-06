@@ -252,10 +252,9 @@ PHP_REDIS_API zend_class_entry *rediscluster_get_exception_base(int root) {
 }
 
 /* Create redisCluster context */
-zend_object *
-create_cluster_context(zend_class_entry *class_type) {
-    redisCluster *cluster = ecalloc(1, sizeof(redisCluster) + sizeof(zval) * (class_type->default_properties_count - 1));
+zend_object * create_cluster_context(zend_class_entry *class_type) {
     struct timeval t1;
+    redisCluster *cluster = ecalloc(1, sizeof(redisCluster) + zend_object_properties_size(class_type));
 
     /* Seed random generator for failover */
     gettimeofday(&t1, NULL);
@@ -596,21 +595,16 @@ static int get_key_ht(redisCluster *c, HashTable *ht, HashPosition *ptr,
 static HashTable *method_args_to_ht(zval *z_args, int argc) {
     HashTable *ht_ret;
     zval *tmp;
-    zend_ulong num_key;
-    zend_string *string_key;
 
     /* Allocate our hash table */
     ALLOC_HASHTABLE(ht_ret);
     zend_hash_init(ht_ret, argc, NULL, NULL, 0);
 
     /* Populate our return hash table with our arguments */
-    ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(z_args), num_key, string_key, tmp) {
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(z_args), tmp) {
         zend_hash_next_index_insert(ht_ret, tmp);
     } ZEND_HASH_FOREACH_END();
 
-    //for (i = 0; i < argc; i++) {
-    //    zend_hash_next_index_insert(ht_ret, z_args[i]);
-    //}
 
     /* Return our hash table */
     return ht_ret;
