@@ -12,7 +12,7 @@
 static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
     return (redisCluster *)((char *)(obj) - XtOffsetOf(redisCluster, std));
 }
-#define Z_REDIS_OBJ_P(zv) php_redis_fetch_object(Z_OBJ_P(zv));
+#define Z_REDIS_OBJ_P(zv) php_redis_fetch_object(Z_OBJ_P(zv))
 
 #define REDIS_METHOD_FETCH_OBJECT                                               \
     i_obj = Z_REDIS_OBJ_P(object);   \
@@ -65,19 +65,19 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
 
 /* Simple 1-1 command -> response macro */
 #define CLUSTER_PROCESS_CMD(cmdname, resp_func, readcmd) \
-    char *cmd; int cmd_len; short slot; void *ctx=NULL; \
+    char *cmd; int cmd_len; short slot; void *ctx = NULL; \
     redisCluster *c = Z_REDIS_OBJ_P(getThis()); \
     c->readonly = CLUSTER_IS_ATOMIC(c) && readcmd; \
-    if(redis_##cmdname##_cmd(INTERNAL_FUNCTION_PARAM_PASSTHRU,c->flags, &cmd, \
+    if (redis_##cmdname##_cmd(INTERNAL_FUNCTION_PARAM_PASSTHRU, c->flags, &cmd, \
                              &cmd_len, &slot, &ctx)==FAILURE) { \
-        RETURN_FALSE; \
+		return; \
     } \
-    if(cluster_send_command(c,slot,cmd,cmd_len)<0 || c->err!=NULL) {\
+    if (cluster_send_command(c, slot, cmd, cmd_len) < 0 || c->err != NULL) {\
         efree(cmd); \
         RETURN_FALSE; \
     } \
     efree(cmd); \
-    if(c->flags->mode == MULTI) { \
+    if (c->flags->mode == MULTI) { \
         CLUSTER_ENQUEUE_RESPONSE(c, slot, resp_func, ctx); \
         RETURN_ZVAL(getThis(), 1, 0); \
     } \
@@ -85,19 +85,19 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
         
 /* More generic processing, where only the keyword differs */
 #define CLUSTER_PROCESS_KW_CMD(kw, cmdfunc, resp_func, readcmd) \
-    char *cmd; int cmd_len; short slot; void *ctx=NULL; \
+    char *cmd; int cmd_len; short slot; void *ctx = NULL; \
     redisCluster *c = Z_REDIS_OBJ_P(getThis()); \
     c->readonly = CLUSTER_IS_ATOMIC(c) && readcmd; \
-    if(cmdfunc(INTERNAL_FUNCTION_PARAM_PASSTHRU, c->flags, kw, &cmd, &cmd_len,\
-               &slot,&ctx)==FAILURE) { \
-        RETURN_FALSE; \
+    if (cmdfunc(INTERNAL_FUNCTION_PARAM_PASSTHRU, c->flags, kw, &cmd, &cmd_len,\
+               &slot, &ctx) == FAILURE) { \
+		return; \
     } \
-    if(cluster_send_command(c,slot,cmd,cmd_len)<0 || c->err!=NULL) { \
+    if (cluster_send_command(c, slot, cmd, cmd_len) < 0 || c->err!=NULL) { \
         efree(cmd); \
         RETURN_FALSE; \
     } \
     efree(cmd); \
-    if(c->flags->mode == MULTI) { \
+    if (c->flags->mode == MULTI) { \
         CLUSTER_ENQUEUE_RESPONSE(c, slot, resp_func, ctx); \
         RETURN_ZVAL(getThis(), 1, 0); \
     } \

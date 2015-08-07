@@ -263,9 +263,8 @@ struct clusterFoldItem {
 
 /* Key and value container, with info if they need freeing */
 typedef struct clusterKeyVal {
-    char *key, *val;
-    int  key_len,  val_len;
-    int  key_free, val_free;
+	zend_string *key;
+	zend_string *val;
 } clusterKeyVal;
 
 /* Container to hold keys (and possibly values) for when we need to distribute
@@ -280,7 +279,7 @@ typedef struct clusterDistList {
  * command execution, in which we'll want to return the value (or add it) */
 typedef struct clusterMultiCtx {
     /* Our running array */
-    zval *z_multi;
+    zval z_multi;
 
     /* How many keys did we request for this bit */
     int count;
@@ -325,10 +324,8 @@ void cluster_free_reply(clusterReply *reply, int free_data);
 /* Cluster distribution helpers for WATCH */
 HashTable *cluster_dist_create();
 void cluster_dist_free(HashTable *ht);
-int cluster_dist_add_key(redisCluster *c, HashTable *ht, char *key, 
-    int key_len, clusterKeyVal **kv);
-void cluster_dist_add_val(redisCluster *c, clusterKeyVal *kv, zval *val 
-   );
+int cluster_dist_add_key(redisCluster *c, HashTable *ht, zend_string *key, clusterKeyVal **kv);
+void cluster_dist_add_val(redisCluster *c, clusterKeyVal *kv, zval *val );
 
 /* Aggregation for multi commands like MGET, MSET, and MSETNX */
 void cluster_multi_init(clusterMultiCmd *mc, char *kw, int kw_len);
@@ -416,7 +413,7 @@ PHP_REDIS_API void cluster_mbulk_assoc_resp(INTERNAL_FUNCTION_PARAMETERS,
 PHP_REDIS_API void cluster_multi_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS,
     redisCluster *c, void *ctx);
 PHP_REDIS_API zval *cluster_zval_mbulk_resp(INTERNAL_FUNCTION_PARAMETERS, 
-    redisCluster *c, int pull, mbulk_cb cb);
+    redisCluster *c, int pull, mbulk_cb cb, zval *rv);
 
 /* Handlers for things like DEL/MGET/MSET/MSETNX */
 PHP_REDIS_API void cluster_del_resp(INTERNAL_FUNCTION_PARAMETERS, 
