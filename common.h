@@ -101,7 +101,7 @@ typedef enum _PUBSUB_TYPE {
 #define IF_NOT_ATOMIC() if(redis_sock->mode != ATOMIC)
 #define IF_ATOMIC() if(redis_sock->mode == ATOMIC)
 #define ELSE_IF_MULTI() else if(redis_sock->mode == MULTI) { \
-    if(redis_response_enqueued(redis_sock TSRMLS_CC) == 1) { \
+    if(redis_response_enqueued(redis_sock) == 1) { \
         RETURN_ZVAL(getThis(), 1, 0);\
     } else { \
         RETURN_FALSE; \
@@ -139,7 +139,7 @@ typedef enum _PUBSUB_TYPE {
     }
 
 #define SOCKET_WRITE_COMMAND(redis_sock, cmd, cmd_len) \
-    if(redis_sock_write(redis_sock, cmd, cmd_len TSRMLS_CC) < 0) { \
+    if(redis_sock_write(redis_sock, cmd, cmd_len) < 0) { \
     efree(cmd); \
     RETURN_FALSE; \
 }
@@ -161,7 +161,7 @@ typedef enum _PUBSUB_TYPE {
 
 #define REDIS_ELSE_IF_MULTI(function, closure_context) \
     else if(redis_sock->mode == MULTI) { \
-        if(redis_response_enqueued(redis_sock TSRMLS_CC) == 1) {\
+        if(redis_response_enqueued(redis_sock) == 1) {\
             REDIS_SAVE_CALLBACK(function, closure_context); \
             RETURN_ZVAL(getThis(), 1, 0);\
         } else {\
@@ -200,7 +200,7 @@ typedef enum _PUBSUB_TYPE {
  * function is redis_<cmdname>_cmd */
 #define REDIS_PROCESS_CMD(cmdname, resp_func) \
     RedisSock *redis_sock; char *cmd; int cmd_len; void *ctx=NULL; \
-    if(redis_sock_get(getThis(), &redis_sock TSRMLS_CC, 0)<0 || \
+    if(redis_sock_get(getThis(), &redis_sock, 0)<0 || \
        redis_##cmdname##_cmd(INTERNAL_FUNCTION_PARAM_PASSTHRU,redis_sock, \
                              &cmd, &cmd_len, NULL, &ctx)==FAILURE) { \
             RETURN_FALSE; \
@@ -215,7 +215,7 @@ typedef enum _PUBSUB_TYPE {
  * and keyword which is passed to us*/
 #define REDIS_PROCESS_KW_CMD(kw, cmdfunc, resp_func) \
     RedisSock *redis_sock; char *cmd; int cmd_len; void *ctx=NULL; \
-    if(redis_sock_get(getThis(), &redis_sock TSRMLS_CC, 0)<0 || \
+    if(redis_sock_get(getThis(), &redis_sock, 0)<0 || \
        cmdfunc(INTERNAL_FUNCTION_PARAM_PASSTHRU, redis_sock, kw, &cmd, \
                &cmd_len, NULL, &ctx)==FAILURE) { \
             RETURN_FALSE; \

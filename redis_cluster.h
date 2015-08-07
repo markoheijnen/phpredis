@@ -12,13 +12,13 @@
 static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
     return (redisCluster *)((char *)(obj) - XtOffsetOf(redisCluster, std));
 }
-#define Z_REDIS_OBJ_P(zv) php_redis_fetch_object(Z_OBJ_P(zv));
+#define Z_REDIS_OBJ_P(zv) php_redis_fetch_object(Z_OBJ_P(zv))
 
 #define REDIS_METHOD_FETCH_OBJECT                                               \
     i_obj = Z_REDIS_OBJ_P(object);   \
     m_obj = i_obj->obj; \
     if (!m_obj) {   \
-        php_error_docref(NULL TSRMLS_CC, E_WARNING, "Memcached constructor was not called");    \
+        php_error_docref(NULL, E_WARNING, "Memcached constructor was not called");    \
         return; \
     }
 
@@ -65,19 +65,19 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
 
 /* Simple 1-1 command -> response macro */
 #define CLUSTER_PROCESS_CMD(cmdname, resp_func, readcmd) \
-    char *cmd; int cmd_len; short slot; void *ctx=NULL; \
+    char *cmd; int cmd_len; short slot; void *ctx = NULL; \
     redisCluster *c = Z_REDIS_OBJ_P(getThis()); \
     c->readonly = CLUSTER_IS_ATOMIC(c) && readcmd; \
-    if(redis_##cmdname##_cmd(INTERNAL_FUNCTION_PARAM_PASSTHRU,c->flags, &cmd, \
+    if (redis_##cmdname##_cmd(INTERNAL_FUNCTION_PARAM_PASSTHRU, c->flags, &cmd, \
                              &cmd_len, &slot, &ctx)==FAILURE) { \
-        RETURN_FALSE; \
+		return; \
     } \
-    if(cluster_send_command(c,slot,cmd,cmd_len TSRMLS_CC)<0 || c->err!=NULL) {\
+    if (cluster_send_command(c, slot, cmd, cmd_len) < 0 || c->err != NULL) {\
         efree(cmd); \
         RETURN_FALSE; \
     } \
     efree(cmd); \
-    if(c->flags->mode == MULTI) { \
+    if (c->flags->mode == MULTI) { \
         CLUSTER_ENQUEUE_RESPONSE(c, slot, resp_func, ctx); \
         RETURN_ZVAL(getThis(), 1, 0); \
     } \
@@ -85,36 +85,35 @@ static inline redisCluster *php_redis_fetch_object(zend_object *obj) {
         
 /* More generic processing, where only the keyword differs */
 #define CLUSTER_PROCESS_KW_CMD(kw, cmdfunc, resp_func, readcmd) \
-    char *cmd; int cmd_len; short slot; void *ctx=NULL; \
+    char *cmd; int cmd_len; short slot; void *ctx = NULL; \
     redisCluster *c = Z_REDIS_OBJ_P(getThis()); \
     c->readonly = CLUSTER_IS_ATOMIC(c) && readcmd; \
-    if(cmdfunc(INTERNAL_FUNCTION_PARAM_PASSTHRU, c->flags, kw, &cmd, &cmd_len,\
-               &slot,&ctx)==FAILURE) { \
-        RETURN_FALSE; \
+    if (cmdfunc(INTERNAL_FUNCTION_PARAM_PASSTHRU, c->flags, kw, &cmd, &cmd_len,\
+               &slot, &ctx) == FAILURE) { \
+		return; \
     } \
-    if(cluster_send_command(c,slot,cmd,cmd_len TSRMLS_CC)<0 || c->err!=NULL) { \
+    if (cluster_send_command(c, slot, cmd, cmd_len) < 0 || c->err!=NULL) { \
         efree(cmd); \
         RETURN_FALSE; \
     } \
     efree(cmd); \
-    if(c->flags->mode == MULTI) { \
+    if (c->flags->mode == MULTI) { \
         CLUSTER_ENQUEUE_RESPONSE(c, slot, resp_func, ctx); \
         RETURN_ZVAL(getThis(), 1, 0); \
     } \
     resp_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, c, ctx); 
 
 /* For the creation of RedisCluster specific exceptions */
-PHP_REDIS_API zend_class_entry *rediscluster_get_exception_base(int root TSRMLS_DC);
+PHP_REDIS_API zend_class_entry *rediscluster_get_exception_base(int root);
 
 /* Create cluster context */
-zend_object *  create_cluster_context(zend_class_entry *class_type
-                                         TSRMLS_DC);
+zend_object *  create_cluster_context(zend_class_entry *class_type);
 
 /* Free cluster context struct */
-void free_cluster_context(void *object TSRMLS_DC);
+void free_cluster_context(void *object);
 
 /* Inittialize our class with PHP */
-void init_rediscluster(TSRMLS_D);
+void init_rediscluster();
 
 /* RedisCluster method implementation */
 PHP_METHOD(RedisCluster, __construct);
